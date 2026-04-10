@@ -1,0 +1,234 @@
+<?php
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../utils/Response.php';
+
+class TrackingController {
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::getConnection();
+    }
+
+    /**
+     * Función auxiliar para convertir strings vacíos de React ("") 
+     * en NULL de SQL para columnas numéricas (INT, DECIMAL).
+     */
+    private function num($val) {
+        return ($val === "" || $val === null) ? null : $val;
+    }
+
+    // 1. Obtener listado general de seguimientos (Cabeceras)
+    public function index() {
+        try {
+            $sql = "SELECT 
+                        t.id, 
+                        t.tracking_code, 
+                        t.tracking_date, 
+                        t.tracking_time, 
+                        c.names AS child_names, 
+                        c.surnames AS child_surnames, 
+                        c.civil_registry,
+                        u.name AS created_by_name
+                    FROM trackings t
+                    INNER JOIN children c ON t.child_id = c.id
+                    INNER JOIN users u ON t.created_by = u.id
+                    ORDER BY t.tracking_date DESC, t.tracking_time DESC";
+            
+            $stmt = $this->db->query($sql);
+            $results = $stmt->fetchAll();
+            
+            Response::json(200, true, "Listado de seguimientos", $results);
+            
+        } catch (\PDOException $e) {
+            Response::json(500, false, "Error de base de datos al listar seguimientos: " . $e->getMessage());
+        }
+    }
+
+    // 2. Obtener un seguimiento específico con TODOS sus módulos
+    public function show($id) {
+        $stmt = $this->db->prepare("SELECT * FROM trackings WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $tracking = $stmt->fetch();
+
+        if (!$tracking) Response::json(404, false, "Seguimiento no encontrado");
+
+        $stmtChild = $this->db->prepare("SELECT names, surnames, civil_registry FROM children WHERE id = :child_id");
+        $stmtChild->execute([':child_id' => $tracking['child_id']]);
+        $tracking['child'] = $stmtChild->fetch();
+
+        $stmtM1 = $this->db->prepare("SELECT * FROM tracking_module1 WHERE tracking_id = :id");
+        $stmtM1->execute([':id' => $id]);
+        $tracking['module1'] = $stmtM1->fetch() ?: null;
+
+        $stmtM2 = $this->db->prepare("SELECT * FROM tracking_module2 WHERE tracking_id = :id");
+        $stmtM2->execute([':id' => $id]);
+        $tracking['module2'] = $stmtM2->fetch() ?: null;
+
+        $stmtM3 = $this->db->prepare("SELECT * FROM tracking_module3 WHERE tracking_id = :id");
+        $stmtM3->execute([':id' => $id]);
+        $tracking['module3'] = $stmtM3->fetch() ?: null;
+
+        $stmtM4 = $this->db->prepare("SELECT * FROM tracking_module4 WHERE tracking_id = :id");
+        $stmtM4->execute([':id' => $id]);
+        $tracking['module4'] = $stmtM4->fetch() ?: null;
+
+        if ($tracking['module4']) {
+            $stmtAntro = $this->db->prepare("SELECT * FROM tracking_anthropometry WHERE tracking_id = :id ORDER BY take_number ASC");
+            $stmtAntro->execute([':id' => $id]);
+            $tracking['module4']['anthropometry'] = $stmtAntro->fetchAll();
+        }
+
+        $stmtM6 = $this->db->prepare("SELECT * FROM tracking_module6 WHERE tracking_id = :id");
+        $stmtM6->execute([':id' => $id]);
+        $tracking['module6'] = $stmtM6->fetch() ?: null;
+
+        Response::json(200, true, "Detalle de seguimiento", $tracking);
+    }
+
+    // 3. Crear Seguimiento Maestro y los módulos enviados (Validando permisos RBAC)
+    public function store($userData) {
+        $data = json_decode(file_get_contents("php://input"));
+
+        if (!isset($data->child_id)) {
+            Response::json(400, false, "El ID del niño es obligatorio.");
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            $trackingCode = 'SEG-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
+            $trackingDate = date('Y-m-d');
+            $trackingTime = date('H:i:s');
+
+            $stmt = $this->db->prepare("INSERT INTO trackings (tracking_code, child_id, created_by, tracking_date, tracking_time) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$trackingCode, $data->child_id, $userData['user_id'], $trackingDate, $trackingTime]);
+            
+            $trackingId = $this->db->lastInsertId();
+            $modulesUserHas = $userData['modules'];
+
+            // --- PROCESAR MÓDULO 1 ---
+            if (isset($data->module1)) {
+                if (!in_array('MODULO_1', $modulesUserHas)) {
+                    throw new Exception("No tienes permiso para diligenciar el Módulo 1.");
+                }
+                $m1 = $data->module1;
+                $stmtM1 = $this->db->prepare("INSERT INTO tracking_module1 (tracking_id, ethnicity, has_disability, disability_type, medical_diagnosis, special_support, special_support_desc) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtM1->execute([
+                    $trackingId, $m1->ethnicity ?? 'Ninguna', $m1->has_disability ?? 0, 
+                    $m1->disability_type ?? 'Ninguna', $m1->medical_diagnosis ?? 0, 
+                    $m1->special_support ?? 0, $m1->special_support_desc ?? null
+                ]);
+            }
+
+            // --- PROCESAR MÓDULO 2 ---
+            if (isset($data->module2)) {
+                if (!in_array('MODULO_2', $modulesUserHas)) {
+                    throw new Exception("No tienes permiso para diligenciar el Módulo 2.");
+                }
+                $m2 = $data->module2;
+                $stmtM2 = $this->db->prepare("INSERT INTO tracking_module2 (tracking_id, participation, motivation, achievements, appropriate_strategies, strengthening_plan, explores_environment, interacts_material, health_behavior_news, absences, absences_reason, incidents, attention_routes, routes_desc, family_info, direct_observer, qualitative_scale, qualitative_no_reason, evaluates_dimensions, trimestral_val, advances, strengths_weaknesses, registers_results, qualitative_val) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmtM2->execute([
+                    $trackingId, $m2->participation ?? 0, $m2->motivation ?? 0, $m2->achievements ?? null,
+                    $m2->appropriate_strategies ?? 0, $m2->strengthening_plan ?? 0, $m2->explores_environment ?? 0,
+                    $m2->interacts_material ?? 0, $m2->health_behavior_news ?? 0, $m2->absences ?? 0,
+                    $m2->absences_reason ?? null, $m2->incidents ?? 0, $m2->attention_routes ?? 0,
+                    $m2->routes_desc ?? null, $m2->family_info ?? 0, $m2->direct_observer ?? 0,
+                    $m2->qualitative_scale ?? 0, $m2->qualitative_no_reason ?? null, $m2->evaluates_dimensions ?? 0,
+                    $m2->trimestral_val ?? 0, $m2->advances ?? 0, $m2->strengths_weaknesses ?? 0,
+                    $m2->registers_results ?? 0, $m2->qualitative_val ?? 'ESPERADO'
+                ]);
+            }
+
+            // --- PROCESAR MÓDULO 3 ---
+            if (isset($data->module3)) {
+                if (!in_array('MODULO_3', $modulesUserHas)) {
+                    throw new Exception("No tienes permiso para diligenciar el Módulo 3.");
+                }
+                $m3 = $data->module3;
+                $stmtM3 = $this->db->prepare("INSERT INTO tracking_module3 (tracking_id, risk_situations, rights_restoration, routes_articulation, family_training_actions) VALUES (?, ?, ?, ?, ?)");
+                $stmtM3->execute([
+                    $trackingId, $m3->risk_situations ?? 0, $m3->rights_restoration ?? 0, 
+                    $m3->routes_articulation ?? 0, $m3->family_training_actions ?? null
+                ]);
+            }
+
+            // --- PROCESAR MÓDULO 4 ---
+            if (isset($data->module4)) {
+                if (!in_array('MODULO_4', $modulesUserHas)) {
+                    throw new Exception("No tienes permiso para diligenciar el Módulo 4.");
+                }
+                $m4 = $data->module4;
+                $stmtM4 = $this->db->prepare("INSERT INTO tracking_module4 (tracking_id, health_affiliated, regime, eps_name, vaccines_updated, growth_chart, controls_6_months, premature, gestational_age, breast_milk, exclusive_lactation_months, total_lactation_months, food_intro_age, oral_health_control, medical_assessment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                
+                // Aplicamos $this->num() a campos que pueden ser numéricos o nulos
+                $stmtM4->execute([
+                    $trackingId, 
+                    $m4->health_affiliated ?? 0, 
+                    $m4->regime ?? 'Ninguno', 
+                    $m4->eps_name ?? null, 
+                    $m4->vaccines_updated ?? 0, 
+                    $m4->growth_chart ?? 0, 
+                    $this->num($m4->controls_6_months) ?? 0, 
+                    $m4->premature ?? 0, 
+                    $this->num($m4->gestational_age), 
+                    $m4->breast_milk ?? 0, 
+                    $this->num($m4->exclusive_lactation_months), 
+                    $this->num($m4->total_lactation_months), 
+                    $this->num($m4->food_intro_age), 
+                    $m4->oral_health_control ?? 0, 
+                    $m4->medical_assessment ?? 0
+                ]);
+
+                // Insertar Antropometría
+                if (isset($m4->anthropometry) && is_array($m4->anthropometry)) {
+                    $stmtAntro = $this->db->prepare("INSERT INTO tracking_anthropometry (tracking_id, take_number, weight_kg, height_cm, nutritional_classification) VALUES (?, ?, ?, ?, ?)");
+                    foreach ($m4->anthropometry as $antro) {
+                        $peso = $this->num($antro->weight_kg);
+                        $talla = $this->num($antro->height_cm);
+                        
+                        // Si ambos están vacíos, no guardamos esta fila específica para evitar errores de MySQL
+                        if ($peso === null && $talla === null) continue;
+
+                        $stmtAntro->execute([
+                            $trackingId, 
+                            $antro->take_number, 
+                            $peso ?? 0, 
+                            $talla ?? 0, 
+                            $antro->nutritional_classification ?: 'No registra'
+                        ]);
+                    }
+                }
+            }
+
+            // --- PROCESAR MÓDULO 6 ---
+            if (isset($data->module6)) {
+                if (!in_array('MODULO_6', $modulesUserHas)) {
+                    throw new Exception("No tienes permiso para diligenciar el Módulo 6.");
+                }
+                $m6 = $data->module6;
+                $stmtM6 = $this->db->prepare("INSERT INTO tracking_module6 (tracking_id, human_talent_qualification) VALUES (?, ?)");
+                $stmtM6->execute([$trackingId, $m6->human_talent_qualification ?? '']);
+            }
+
+            $this->db->commit();
+            Response::json(201, true, "Seguimiento guardado exitosamente.", ["tracking_code" => $trackingCode]);
+
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            Response::json(400, false, "Error al guardar: " . $e->getMessage());
+        }
+    }
+
+    // 4. Estadísticas y Reportes para el Dashboard
+    public function statistics() {
+        $stats = [];
+        $stats['total_children'] = $this->db->query("SELECT COUNT(id) FROM children")->fetchColumn();
+        $stats['total_trackings'] = $this->db->query("SELECT COUNT(id) FROM trackings")->fetchColumn();
+        $stats['children_by_facility'] = $this->db->query("SELECT facility, COUNT(*) as count FROM children GROUP BY facility")->fetchAll();
+        $stats['development_status'] = $this->db->query("SELECT qualitative_val, COUNT(*) as count FROM tracking_module2 GROUP BY qualitative_val")->fetchAll();
+        $stats['rights_risks'] = $this->db->query("SELECT SUM(risk_situations) as risk_total, SUM(rights_restoration) as restoration_total FROM tracking_module3")->fetch();
+        $stats['health_stats'] = $this->db->query("SELECT SUM(vaccines_updated) as vaccines_ok, SUM(health_affiliated) as affiliated_ok FROM tracking_module4")->fetch();
+
+        Response::json(200, true, "Estadísticas cargadas", $stats);
+    }
+}
