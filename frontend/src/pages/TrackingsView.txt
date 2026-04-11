@@ -14,7 +14,7 @@ const TrackingsView = () => {
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewData, setPreviewData] = useState(null);
 
-    // Estado del Formulario Integral (Crear/Editar)
+    // Estado del Formulario Integral
     const [formData, setFormData] = useState(getInitialFormData());
 
     function getInitialFormData() {
@@ -89,24 +89,24 @@ const TrackingsView = () => {
         try {
             const res = await api.get(`/trackings/${trackingId}`);
             const data = res.data.data;
-            
+
             const newForm = getInitialFormData();
             newForm.id = data.id;
             newForm.child_id = data.child_id;
-            
+
             if (data.module1 && newForm.module1) newForm.module1 = { ...newForm.module1, ...data.module1 };
             if (data.module2 && newForm.module2) newForm.module2 = { ...newForm.module2, ...data.module2 };
             if (data.module3 && newForm.module3) newForm.module3 = { ...newForm.module3, ...data.module3 };
             if (data.module6 && newForm.module6) newForm.module6 = { ...newForm.module6, ...data.module6 };
-            
+
             if (data.module4 && newForm.module4) {
                 newForm.module4 = { ...newForm.module4, ...data.module4 };
                 if (data.module4.anthropometry) {
                     const fetchedAntro = data.module4.anthropometry;
                     newForm.module4.anthropometry = [1, 2, 3, 4].map(num => {
                         const found = fetchedAntro.find(a => a.take_number === num);
-                        return found 
-                            ? { take_number: num, weight_kg: found.weight_kg || '', height_cm: found.height_cm || '', nutritional_classification: found.nutritional_classification || '' } 
+                        return found
+                            ? { take_number: num, weight_kg: found.weight_kg || '', height_cm: found.height_cm || '', nutritional_classification: found.nutritional_classification || '' }
                             : { take_number: num, weight_kg: '', height_cm: '', nutritional_classification: '' };
                     });
                 }
@@ -120,7 +120,7 @@ const TrackingsView = () => {
                 });
                 return obj;
             };
-            
+
             setFormData(cleanNulls(newForm));
             setShowModal(true);
         } catch (error) {
@@ -128,7 +128,6 @@ const TrackingsView = () => {
         }
     };
 
-    // Cargar y mostrar previsualización / PDF
     const handlePreview = async (trackingId) => {
         try {
             const res = await api.get(`/trackings/${trackingId}`);
@@ -156,7 +155,7 @@ const TrackingsView = () => {
                 alert(`¡Guardado exitosamente! Código: ${res.data.data.tracking_code}`);
             }
             setShowModal(false);
-            setFormData(getInitialFormData()); 
+            setFormData(getInitialFormData());
             loadData();
         } catch (error) {
             alert(error.response?.data?.message || "Error al procesar el seguimiento");
@@ -172,7 +171,6 @@ const TrackingsView = () => {
         </div>
     );
 
-    // Función auxiliar para renderizar "Sí" o "No" en el PDF
     const yesNo = (val) => val == 1 || val == '1' || val === true ? 'Sí' : 'No';
 
     return (
@@ -182,9 +180,9 @@ const TrackingsView = () => {
                 <div className="flex gap-3 w-full sm:w-auto">
                     <div className="relative flex-1 sm:w-64">
                         <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar por nombre o RC..." 
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o RC..."
                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
@@ -227,188 +225,217 @@ const TrackingsView = () => {
                 MODAL DE PREVISUALIZACIÓN Y REPORTE PDF (Aparece sobre toda la pantalla)
                 ======================================================================= */}
             {showPreviewModal && previewData && (
-                <div className="fixed inset-0 z-[100] bg-gray-900 bg-opacity-80 flex justify-center p-4 print:p-0 print:bg-white overflow-y-auto print:overflow-visible">
-                    <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col relative print:shadow-none print:rounded-none">
-                        
-                        {/* BOTONES DE ACCIÓN (Ocultos en impresión) */}
-                        <div className="print:hidden sticky top-0 bg-gray-100 border-b p-4 flex justify-between items-center rounded-t-xl z-10 shadow-sm">
-                            <h2 className="text-xl font-black text-gray-800">Previsualización del Documento</h2>
-                            <div className="flex gap-3">
-                                <button onClick={handlePrint} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 font-bold transition-all shadow-md">
-                                    <Printer className="w-5 h-5"/> Generar PDF
-                                </button>
-                                <button onClick={() => setShowPreviewModal(false)} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 font-bold transition-all">
-                                    <X className="w-5 h-5"/> Cerrar
-                                </button>
-                            </div>
-                        </div>
+                <div>
+                    {/* ESTILOS DE IMPRESIÓN DINÁMICOS */}
+                    <style type="text/css">
+                        {`
+                        @media print {
+                            @page { 
+                                size: legal; /* Tamaño Folio/Legal */
+                                margin: 15mm; 
+                            }
+                            body, html { 
+                                overflow: visible !important; 
+                                height: auto !important; 
+                                background: white !important; 
+                            }
+                            #root { 
+                                overflow: visible !important; 
+                                height: auto !important; 
+                                display: block !important; 
+                            }
+                            /* Forzar la impresión de colores de fondo de Tailwind */
+                            * { 
+                                -webkit-print-color-adjust: exact !important; 
+                                print-color-adjust: exact !important; 
+                            }
+                        }
+                        `}
+                    </style>
 
-                        {/* CONTENIDO DEL REPORTE (Lo que se imprime) */}
-                        <div className="p-8 print:p-2 bg-white text-gray-800 font-sans text-sm">
-                            {/* Cabecera Formal */}
-                            <div className="border-b-2 border-gray-800 pb-4 mb-6 flex justify-between items-end">
-                                <div>
-                                    <h1 className="text-2xl font-black uppercase text-gray-900 tracking-tight">Reporte de Seguimiento Integral</h1>
-                                    <p className="font-semibold text-gray-600 mt-1">Sede / Hogar Infantil: <span className="text-gray-900">{previewData.child.facility || 'No registrada'}</span></p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-gray-500 text-xs uppercase tracking-wider mb-1">Código del Documento</p>
-                                    <p className="text-xl font-black text-gray-900 border border-gray-300 px-3 py-1 rounded bg-gray-50">{previewData.tracking_code}</p>
-                                </div>
-                            </div>
+                    <div className="fixed inset-0 z-[100] bg-gray-900 bg-opacity-80 flex justify-center p-4 overflow-y-auto print:absolute print:inset-0 print:block print:w-full print:h-auto print:overflow-visible print:bg-white print:p-0">
+                        <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col relative print:w-full print:max-w-none print:shadow-none print:border-none print:rounded-none print:block print:h-auto print:m-0">
 
-                            {/* Metadatos */}
-                            <div className="flex justify-between text-xs text-gray-500 mb-6 bg-gray-50 p-2 rounded border">
-                                <p><strong>Fecha de Creación:</strong> {previewData.tracking_date} {previewData.tracking_time}</p>
-                                <p><strong>Impreso el:</strong> {new Date().toLocaleDateString()}</p>
-                            </div>
-
-                            {/* Información del Niño */}
-                            <div className="mb-6">
-                                <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">1. Datos del Participante</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-blue-50/30">
-                                    <div className="col-span-2"><p className="text-xs text-gray-500">Nombres y Apellidos</p><p className="font-bold text-base">{previewData.child.names} {previewData.child.surnames}</p></div>
-                                    <div><p className="text-xs text-gray-500">Registro Civil</p><p className="font-bold text-base">{previewData.child.civil_registry}</p></div>
-                                    <div><p className="text-xs text-gray-500">Sexo</p><p className="font-bold text-base">{previewData.child.gender}</p></div>
+                            {/* BOTONES DE ACCIÓN (Ocultos en impresión) */}
+                            <div className="print:hidden sticky top-0 bg-gray-100 border-b p-4 flex justify-between items-center rounded-t-xl z-10 shadow-sm">
+                                <h2 className="text-xl font-black text-gray-800">Previsualización del Documento</h2>
+                                <div className="flex gap-3">
+                                    <button onClick={handlePrint} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 font-bold transition-all shadow-md">
+                                        <Printer className="w-5 h-5" /> Generar PDF
+                                    </button>
+                                    <button onClick={() => setShowPreviewModal(false)} className="bg-red-100 hover:bg-red-200 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 font-bold transition-all">
+                                        <X className="w-5 h-5" /> Cerrar
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Módulo 1 */}
-                            {previewData.module1 && (
-                                <div className="mb-6">
-                                    <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 1: Información del Participante</h3>
-                                    <div className="grid grid-cols-3 gap-y-4">
-                                        <p><strong>Etnia:</strong> {previewData.module1.ethnicity}</p>
-                                        <p><strong>¿Discapacidad?:</strong> {yesNo(previewData.module1.has_disability)}</p>
-                                        <p><strong>Tipo Discapacidad:</strong> {previewData.module1.disability_type}</p>
-                                        <p><strong>Diagnóstico Médico:</strong> {yesNo(previewData.module1.medical_diagnosis)}</p>
-                                        <p className="col-span-2"><strong>Apoyo Especial:</strong> {yesNo(previewData.module1.special_support)} {previewData.module1.special_support_desc ? `(${previewData.module1.special_support_desc})` : ''}</p>
+                            {/* CONTENIDO DEL REPORTE (Lo que se imprime) */}
+                            <div className="p-8 print:p-2 bg-white text-gray-800 font-sans text-sm">
+                                {/* Cabecera Formal */}
+                                <div className="border-b-2 border-gray-800 pb-4 mb-6 flex justify-between items-end print:break-inside-avoid">
+                                    <div>
+                                        <h1 className="text-2xl font-black uppercase text-gray-900 tracking-tight">Reporte de Seguimiento Integral</h1>
+                                        <p className="font-semibold text-gray-600 mt-1">Sede / Hogar Infantil: <span className="text-gray-900">{previewData.child.facility || 'No registrada'}</span></p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-gray-500 text-xs uppercase tracking-wider mb-1">Código del Documento</p>
+                                        <p className="text-xl font-black text-gray-900 border border-gray-300 px-3 py-1 rounded bg-gray-50">{previewData.tracking_code}</p>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Módulo 2 */}
-                            {previewData.module2 && (
-                                <div className="mb-6">
-                                    <div className="flex justify-between items-end border-b border-gray-300 pb-1 mb-3">
-                                        <h3 className="font-black text-gray-800 uppercase">Módulo 2: Permanencia y Pedagogía</h3>
-                                        <div className="bg-gray-100 px-3 py-1 border rounded text-xs font-black">
-                                            VALORACIÓN FINAL: <span className="text-blue-700">{previewData.module2.qualitative_val}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div>
-                                            <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center">Pedagógico</h4>
-                                            <ul className="text-xs space-y-1 list-disc pl-4">
-                                                <li>Participación Activa: <strong>{yesNo(previewData.module2.participation)}</strong></li>
-                                                <li>Motivación: <strong>{yesNo(previewData.module2.motivation)}</strong></li>
-                                                <li>Estrategias Acordes: <strong>{yesNo(previewData.module2.appropriate_strategies)}</strong></li>
-                                                <li>Plan Fortalecimiento: <strong>{yesNo(previewData.module2.strengthening_plan)}</strong></li>
-                                            </ul>
-                                            <div className="mt-2 text-xs bg-yellow-50 p-2 border border-yellow-200"><strong>Logros:</strong> {previewData.module2.achievements || 'Ninguno registrado'}</div>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center">Novedades</h4>
-                                            <ul className="text-xs space-y-1 list-disc pl-4">
-                                                <li>Salud/Comportamiento: <strong>{yesNo(previewData.module2.health_behavior_news)}</strong></li>
-                                                <li>Inasistencias: <strong>{yesNo(previewData.module2.absences)}</strong> {previewData.module2.absences_reason && `(${previewData.module2.absences_reason})`}</li>
-                                                <li>Incidentes: <strong>{yesNo(previewData.module2.incidents)}</strong></li>
-                                                <li>Rutas Activadas: <strong>{yesNo(previewData.module2.attention_routes)}</strong> {previewData.module2.routes_desc && `(${previewData.module2.routes_desc})`}</li>
-                                            </ul>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center">Desarrollo</h4>
-                                            <ul className="text-xs space-y-1 list-disc pl-4">
-                                                <li>Observador Directo: <strong>{yesNo(previewData.module2.direct_observer)}</strong></li>
-                                                <li>Escala Cualitativa: <strong>{yesNo(previewData.module2.qualitative_scale)}</strong></li>
-                                                <li>Valoración Trimestral: <strong>{yesNo(previewData.module2.trimestral_val)}</strong></li>
-                                                <li>Fortalezas/Dificultades: <strong>{yesNo(previewData.module2.strengths_weaknesses)}</strong></li>
-                                            </ul>
-                                        </div>
+                                {/* Metadatos */}
+                                <div className="flex justify-between text-xs text-gray-500 mb-6 bg-gray-50 p-2 rounded border print:break-inside-avoid">
+                                    <p><strong>Fecha de Creación:</strong> {previewData.tracking_date} {previewData.tracking_time}</p>
+                                    <p><strong>Impreso el:</strong> {new Date().toLocaleDateString()}</p>
+                                </div>
+
+                                {/* Información del Niño */}
+                                <div className="mb-6 print:break-inside-avoid">
+                                    <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">1. Datos del Participante</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-blue-50">
+                                        <div className="col-span-2"><p className="text-xs text-gray-500">Nombres y Apellidos</p><p className="font-bold text-base">{previewData.child.names} {previewData.child.surnames}</p></div>
+                                        <div><p className="text-xs text-gray-500">Registro Civil</p><p className="font-bold text-base">{previewData.child.civil_registry}</p></div>
+                                        <div><p className="text-xs text-gray-500">Sexo</p><p className="font-bold text-base">{previewData.child.gender}</p></div>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Módulo 3 */}
-                            {previewData.module3 && (
-                                <div className="mb-6">
-                                    <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 3: Familia y Comunidad</h3>
-                                    <div className="grid grid-cols-3 gap-y-4">
-                                        <p><strong>Situaciones Riesgo:</strong> {yesNo(previewData.module3.risk_situations)}</p>
-                                        <p><strong>Restablecimiento Derechos:</strong> {yesNo(previewData.module3.rights_restoration)}</p>
-                                        <p><strong>Articulación Rutas:</strong> {yesNo(previewData.module3.routes_articulation)}</p>
-                                        <div className="col-span-3"><strong>Acciones formación a familias:</strong> <span className="text-gray-700 italic">{previewData.module3.family_training_actions || 'No registradas'}</span></div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Módulo 4 */}
-                            {previewData.module4 && (
-                                <div className="mb-6">
-                                    <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 4: Salud y Nutrición</h3>
-                                    <div className="grid grid-cols-4 gap-y-3 text-xs mb-4">
-                                        <p><strong>Afiliado a Salud:</strong> {yesNo(previewData.module4.health_affiliated)}</p>
-                                        <p><strong>Régimen:</strong> {previewData.module4.regime}</p>
-                                        <p className="col-span-2"><strong>EPS:</strong> {previewData.module4.eps_name || 'N/A'}</p>
-                                        
-                                        <p><strong>Vacunas al día:</strong> {yesNo(previewData.module4.vaccines_updated)}</p>
-                                        <p><strong>Carnet Crecimiento:</strong> {yesNo(previewData.module4.growth_chart)}</p>
-                                        <p><strong>Controles (6 meses):</strong> {previewData.module4.controls_6_months}</p>
-                                        <p><strong>Prematurez:</strong> {yesNo(previewData.module4.premature)} {previewData.module4.gestational_age && `(${previewData.module4.gestational_age} sem)`}</p>
-
-                                        <p><strong>Leche Materna:</strong> {yesNo(previewData.module4.breast_milk)}</p>
-                                        <p><strong>Meses Exclusiva:</strong> {previewData.module4.exclusive_lactation_months || 'N/A'}</p>
-                                        <p><strong>Meses Total:</strong> {previewData.module4.total_lactation_months || 'N/A'}</p>
-                                        <p><strong>Intro Alimentos (meses):</strong> {previewData.module4.food_intro_age || 'N/A'}</p>
-                                    </div>
-
-                                    {/* Antropometría Tabla Print */}
-                                    {previewData.module4.anthropometry && previewData.module4.anthropometry.length > 0 && (
-                                        <div className="border border-gray-300 rounded overflow-hidden">
-                                            <div className="bg-gray-100 font-bold text-center text-xs p-1 border-b border-gray-300">Registro de Antropometría</div>
-                                            <table className="w-full text-center text-xs">
-                                                <thead className="bg-gray-50 border-b">
-                                                    <tr><th className="p-1 border-r">Toma</th><th className="p-1 border-r">Peso (KG)</th><th className="p-1 border-r">Talla (CMS)</th><th className="p-1">Clasificación Nutricional</th></tr>
-                                                </thead>
-                                                <tbody>
-                                                    {previewData.module4.anthropometry.map(a => (
-                                                        <tr key={a.take_number} className="border-b border-gray-100 last:border-0">
-                                                            <td className="p-1 border-r font-bold">#{a.take_number}</td>
-                                                            <td className="p-1 border-r">{a.weight_kg || '-'}</td>
-                                                            <td className="p-1 border-r">{a.height_cm || '-'}</td>
-                                                            <td className="p-1">{a.nutritional_classification || '-'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                {/* Módulo 1 */}
+                                {previewData.module1 && (
+                                    <div className="mb-6 print:break-inside-avoid">
+                                        <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 1: Información del Participante</h3>
+                                        <div className="grid grid-cols-3 gap-y-4">
+                                            <p><strong>Etnia:</strong> {previewData.module1.ethnicity}</p>
+                                            <p><strong>¿Discapacidad?:</strong> {yesNo(previewData.module1.has_disability)}</p>
+                                            <p><strong>Tipo Discapacidad:</strong> {previewData.module1.disability_type}</p>
+                                            <p><strong>Diagnóstico Médico:</strong> {yesNo(previewData.module1.medical_diagnosis)}</p>
+                                            <p className="col-span-2"><strong>Apoyo Especial:</strong> {yesNo(previewData.module1.special_support)} {previewData.module1.special_support_desc ? `(${previewData.module1.special_support_desc})` : ''}</p>
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                    </div>
+                                )}
 
-                            {/* Módulo 6 */}
-                            {previewData.module6 && (
-                                <div className="mb-6">
-                                    <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 6: Comunidades de Aprendizaje</h3>
-                                    <p className="text-sm"><strong>Cualificación talento humano:</strong> <br/> <span className="text-gray-700 italic block mt-1 bg-gray-50 p-2 border rounded">{previewData.module6.human_talent_qualification || 'Sin registros.'}</span></p>
-                                </div>
-                            )}
+                                {/* Módulo 2 */}
+                                {previewData.module2 && (
+                                    <div className="mb-6 print:break-inside-avoid">
+                                        <div className="flex justify-between items-end border-b border-gray-300 pb-1 mb-3">
+                                            <h3 className="font-black text-gray-800 uppercase">Módulo 2: Permanencia y Pedagogía</h3>
+                                            <div className="bg-gray-100 px-3 py-1 border rounded text-xs font-black">
+                                                VALORACIÓN FINAL: <span className="text-blue-700">{previewData.module2.qualitative_val}</span>
+                                            </div>
+                                        </div>
 
-                            {/* Firmas */}
-                            <div className="mt-16 pt-8 border-t-2 border-gray-800 grid grid-cols-2 gap-8 text-center print:mt-24">
-                                <div>
-                                    <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
-                                    <p className="font-bold text-sm">Firma del Profesional / Docente</p>
-                                    <p className="text-xs text-gray-500">Generado por el Sistema</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div>
+                                                <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Pedagógico</h4>
+                                                <ul className="text-xs space-y-1 list-disc pl-4">
+                                                    <li>Participación Activa: <strong>{yesNo(previewData.module2.participation)}</strong></li>
+                                                    <li>Motivación: <strong>{yesNo(previewData.module2.motivation)}</strong></li>
+                                                    <li>Estrategias Acordes: <strong>{yesNo(previewData.module2.appropriate_strategies)}</strong></li>
+                                                    <li>Plan Fortalecimiento: <strong>{yesNo(previewData.module2.strengthening_plan)}</strong></li>
+                                                </ul>
+                                                <div className="mt-2 text-xs bg-yellow-50 p-2 border border-yellow-200"><strong>Logros:</strong> {previewData.module2.achievements || 'Ninguno registrado'}</div>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Novedades</h4>
+                                                <ul className="text-xs space-y-1 list-disc pl-4">
+                                                    <li>Salud/Comportamiento: <strong>{yesNo(previewData.module2.health_behavior_news)}</strong></li>
+                                                    <li>Inasistencias: <strong>{yesNo(previewData.module2.absences)}</strong> {previewData.module2.absences_reason && `(${previewData.module2.absences_reason})`}</li>
+                                                    <li>Incidentes: <strong>{yesNo(previewData.module2.incidents)}</strong></li>
+                                                    <li>Rutas Activadas: <strong>{yesNo(previewData.module2.attention_routes)}</strong> {previewData.module2.routes_desc && `(${previewData.module2.routes_desc})`}</li>
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Desarrollo</h4>
+                                                <ul className="text-xs space-y-1 list-disc pl-4">
+                                                    <li>Observador Directo: <strong>{yesNo(previewData.module2.direct_observer)}</strong></li>
+                                                    <li>Escala Cualitativa: <strong>{yesNo(previewData.module2.qualitative_scale)}</strong></li>
+                                                    <li>Valoración Trimestral: <strong>{yesNo(previewData.module2.trimestral_val)}</strong></li>
+                                                    <li>Fortalezas/Dificultades: <strong>{yesNo(previewData.module2.strengths_weaknesses)}</strong></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Módulo 3 */}
+                                {previewData.module3 && (
+                                    <div className="mb-6 print:break-inside-avoid">
+                                        <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 3: Familia y Comunidad</h3>
+                                        <div className="grid grid-cols-3 gap-y-4">
+                                            <p><strong>Situaciones Riesgo:</strong> {yesNo(previewData.module3.risk_situations)}</p>
+                                            <p><strong>Restablecimiento Derechos:</strong> {yesNo(previewData.module3.rights_restoration)}</p>
+                                            <p><strong>Articulación Rutas:</strong> {yesNo(previewData.module3.routes_articulation)}</p>
+                                            <div className="col-span-3"><strong>Acciones formación a familias:</strong> <span className="text-gray-700 italic">{previewData.module3.family_training_actions || 'No registradas'}</span></div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Módulo 4 */}
+                                {previewData.module4 && (
+                                    <div className="mb-6 print:break-inside-avoid">
+                                        <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 4: Salud y Nutrición</h3>
+                                        <div className="grid grid-cols-4 gap-y-3 text-xs mb-4">
+                                            <p><strong>Afiliado a Salud:</strong> {yesNo(previewData.module4.health_affiliated)}</p>
+                                            <p><strong>Régimen:</strong> {previewData.module4.regime}</p>
+                                            <p className="col-span-2"><strong>EPS:</strong> {previewData.module4.eps_name || 'N/A'}</p>
+
+                                            <p><strong>Vacunas al día:</strong> {yesNo(previewData.module4.vaccines_updated)}</p>
+                                            <p><strong>Carnet Crecimiento:</strong> {yesNo(previewData.module4.growth_chart)}</p>
+                                            <p><strong>Controles (6 meses):</strong> {previewData.module4.controls_6_months}</p>
+                                            <p><strong>Prematurez:</strong> {yesNo(previewData.module4.premature)} {previewData.module4.gestational_age && `(${previewData.module4.gestational_age} sem)`}</p>
+
+                                            <p><strong>Leche Materna:</strong> {yesNo(previewData.module4.breast_milk)}</p>
+                                            <p><strong>Meses Exclusiva:</strong> {previewData.module4.exclusive_lactation_months || 'N/A'}</p>
+                                            <p><strong>Meses Total:</strong> {previewData.module4.total_lactation_months || 'N/A'}</p>
+                                            <p><strong>Intro Alimentos (meses):</strong> {previewData.module4.food_intro_age || 'N/A'}</p>
+                                        </div>
+
+                                        {/* Antropometría Tabla Print */}
+                                        {previewData.module4.anthropometry && previewData.module4.anthropometry.length > 0 && (
+                                            <div className="border border-gray-300 rounded overflow-hidden">
+                                                <div className="bg-gray-100 font-bold text-center text-xs p-1 border-b border-gray-300">Registro de Antropometría</div>
+                                                <table className="w-full text-center text-xs">
+                                                    <thead className="bg-gray-50 border-b">
+                                                        <tr><th className="p-1 border-r">Toma</th><th className="p-1 border-r">Peso (KG)</th><th className="p-1 border-r">Talla (CMS)</th><th className="p-1">Clasificación Nutricional</th></tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {previewData.module4.anthropometry.map(a => (
+                                                            <tr key={a.take_number} className="border-b border-gray-100 last:border-0">
+                                                                <td className="p-1 border-r font-bold">#{a.take_number}</td>
+                                                                <td className="p-1 border-r">{a.weight_kg || '-'}</td>
+                                                                <td className="p-1 border-r">{a.height_cm || '-'}</td>
+                                                                <td className="p-1">{a.nutritional_classification || '-'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Módulo 6 */}
+                                {previewData.module6 && (
+                                    <div className="mb-6 print:break-inside-avoid">
+                                        <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 6: Comunidades de Aprendizaje</h3>
+                                        <p className="text-sm"><strong>Cualificación talento humano:</strong> <br /> <span className="text-gray-700 italic block mt-1 bg-gray-50 p-2 border rounded">{previewData.module6.human_talent_qualification || 'Sin registros.'}</span></p>
+                                    </div>
+                                )}
+
+                                {/* Firmas */}
+                                <div className="mt-16 pt-8 border-t-2 border-gray-800 grid grid-cols-2 gap-8 text-center print:break-inside-avoid">
+                                    <div>
+                                        <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
+                                        <p className="font-bold text-sm">Firma del Profesional / Docente</p>
+                                        <p className="text-xs text-gray-500">Generado por el Sistema</p>
+                                    </div>
+                                    <div>
+                                        <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
+                                        <p className="font-bold text-sm">Firma del Coordinador</p>
+                                        <p className="text-xs text-gray-500">Hogar Infantil / Sede</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
-                                    <p className="font-bold text-sm">Firma del Coordinador</p>
-                                    <p className="text-xs text-gray-500">Hogar Infantil / Sede</p>
-                                </div>
+
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -517,7 +544,7 @@ const TrackingsView = () => {
 
                                             {/* Subsección: Novedades */}
                                             <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                                <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Novedades y Novedades</h4>
+                                                <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Novedades</h4>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <SelectYesNo label="Salud/Comportamiento" mod="module2" field="health_behavior_news" />
                                                     <SelectYesNo label="Inasistencias" mod="module2" field="absences" />
@@ -638,23 +665,23 @@ const TrackingsView = () => {
                                                                 <tr key={idx} className="bg-white">
                                                                     <td className="p-3 font-bold text-gray-500">#{row.take_number}</td>
                                                                     <td className="p-2">
-                                                                        <input 
-                                                                            type="number" step="0.01" placeholder="0.00" 
+                                                                        <input
+                                                                            type="number" step="0.01" placeholder="0.00"
                                                                             className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-1 focus:ring-emerald-400"
                                                                             value={row.weight_kg}
                                                                             onChange={e => handleAnthropometryChange(idx, 'weight_kg', e.target.value)}
                                                                         />
                                                                     </td>
                                                                     <td className="p-2">
-                                                                        <input 
-                                                                            type="number" step="0.01" placeholder="0.0" 
+                                                                        <input
+                                                                            type="number" step="0.01" placeholder="0.0"
                                                                             className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-1 focus:ring-emerald-400"
                                                                             value={row.height_cm}
                                                                             onChange={e => handleAnthropometryChange(idx, 'height_cm', e.target.value)}
                                                                         />
                                                                     </td>
                                                                     <td className="p-2">
-                                                                        <select 
+                                                                        <select
                                                                             className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-1 focus:ring-emerald-400"
                                                                             value={row.nutritional_classification}
                                                                             onChange={e => handleAnthropometryChange(idx, 'nutritional_classification', e.target.value)}

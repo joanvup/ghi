@@ -3,9 +3,9 @@ import axios from 'axios';
 // Asegúrate de cambiar esto según la carpeta donde corre tu PHP en Laragon/XAMPP
 // Por ejemplo: 'http://localhost/tu-carpeta/backend'
 // const API_URL = 'http://localhost/api'; 
-// const API_URL = 'http://ghi.test/backend';
-// const API_URL = 'http://ghi.test/ghi/backend';
-const API_URL = 'https://ghi.colegiobilingue.edu.co/api';
+const API_URL = 'http://ghi.test/backend';
+//const API_URL = 'http://ghi.test/ghi/backend';
+//const API_URL = 'https://ghi.colegiobilingue.edu.co/api';
 
 const api = axios.create({
     baseURL: API_URL,

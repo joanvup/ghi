@@ -26,60 +26,6 @@ class ChildController {
         }
     }
 
-    // --- NUEVO: Crear niño manual ---
-    public function store() {
-        
-        $data = json_decode(file_get_contents("php://input"));
-        
-        // Debug: Verifica si llega data
-        if (!$data) Response::json(400, false, "Datos no recibidos.");
-
-        try {
-            $stmt = $this->db->prepare("INSERT INTO children 
-                (names, surnames, civil_registry, birth_date, entry_date, exit_date, gender, blood_group, rh, eps, address, facility, guardian_relation, guardian_name, guardian_document, guardian_address, guardian_phone) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            
-            $stmt->execute([
-                $data->names, $data->surnames, $data->civil_registry, 
-                $data->birth_date, $data->entry_date, (!empty($data->exit_date) ? $data->exit_date : null), 
-                $data->gender, $data->blood_group, $data->rh, $data->eps, 
-                $data->address, $data->facility, $data->guardian_relation, 
-                $data->guardian_name, $data->guardian_document, $data->guardian_address, $data->guardian_phone
-            ]);
-
-            Response::json(201, true, "Niño registrado exitosamente.");
-        } catch (\PDOException $e) {
-            // Esto imprimirá el error real de MySQL en la respuesta
-            Response::json(500, false, "Error de BD: " . $e->getMessage());
-        }
-    }
-
-    // --- NUEVO: Actualizar niño ---
-    public function update($id) {
-        $data = json_decode(file_get_contents("php://input"));
-        
-        try {
-            $stmt = $this->db->prepare("UPDATE children SET 
-                names=?, surnames=?, civil_registry=?, birth_date=?, entry_date=?, exit_date=?, 
-                gender=?, blood_group=?, rh=?, eps=?, address=?, facility=?, 
-                guardian_relation=?, guardian_name=?, guardian_document=?, guardian_address=?, guardian_phone=?
-                WHERE id=?");
-            
-            $stmt->execute([
-                $data->names, $data->surnames, $data->civil_registry, 
-                $data->birth_date, $data->entry_date, (!empty($data->exit_date) ? $data->exit_date : null), 
-                $data->gender, $data->blood_group, $data->rh, $data->eps, 
-                $data->address, $data->facility, $data->guardian_relation, 
-                $data->guardian_name, $data->guardian_document, $data->guardian_address, $data->guardian_phone,
-                $id
-            ]);
-
-            Response::json(200, true, "Actualizado correctamente.");
-        } catch (\PDOException $e) {
-            Response::json(500, false, "Error de BD al actualizar: " . $e->getMessage());
-        }
-    }
-
     public function downloadTemplate() {
         try {
             if (ob_get_contents()) ob_end_clean(); // Limpiar basura del buffer

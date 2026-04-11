@@ -544,7 +544,7 @@ const TrackingsView = () => {
 
                                             {/* Subsección: Novedades */}
                                             <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                                <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Novedades y Novedades</h4>
+                                                <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Novedades</h4>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <SelectYesNo label="Salud/Comportamiento" mod="module2" field="health_behavior_news" />
                                                     <SelectYesNo label="Inasistencias" mod="module2" field="absences" />
