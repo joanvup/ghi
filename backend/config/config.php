@@ -3,6 +3,9 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Configuración de Zona Horaria
+date_default_timezone_set('America/Bogota');
+
 // Constantes de Base de Datos
 define('DB_HOST', 'localhost');
 define('DB_USER', 'ghi'); // Cambia esto si tu usuario MySQL es distinto
