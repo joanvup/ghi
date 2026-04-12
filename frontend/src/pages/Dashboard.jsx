@@ -204,7 +204,7 @@ const Dashboard = () => {
                                 <h4 className="text-sm font-bold text-gray-800">Requieren Apoyo Especial</h4>
                                 <p className="text-xs text-gray-500">Según valoración docente</p>
                             </div>
-                            <span className="text-2xl font-black text-indigo-600">{stats.demographics.special_support || 0}</span>
+                            <span className="text-2xl font-black text-indigo-600">{stats.demographics?.special_support || 0}</span>
                         </div>
                     </div>
                 </div>
