@@ -131,7 +131,7 @@ const Dashboard = () => {
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Módulo 4</span>
                     </div>
 
-                    {stats.health_regim?.lengthe > 0 ? (
+                    {stats.health_regime?.length > 0 ? (
                         <div className="flex-1 min-h-[250px] relative">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
