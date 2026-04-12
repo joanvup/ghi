@@ -352,13 +352,64 @@ class TrackingController {
 
     public function statistics() {
         $stats = [];
+        
+        // --- KPI GLOBALES ---
         $stats['total_children'] = $this->db->query("SELECT COUNT(id) FROM children")->fetchColumn();
+        $stats['active_children'] = $this->db->query("SELECT COUNT(id) FROM children WHERE exit_date IS NULL OR exit_date > CURDATE()")->fetchColumn();
+        $stats['retired_children'] = $this->db->query("SELECT COUNT(id) FROM children WHERE exit_date <= CURDATE()")->fetchColumn();
         $stats['total_trackings'] = $this->db->query("SELECT COUNT(id) FROM trackings")->fetchColumn();
-        $stats['children_by_facility'] = $this->db->query("SELECT facility, COUNT(*) as count FROM children GROUP BY facility")->fetchAll();
-        $stats['development_status'] = $this->db->query("SELECT qualitative_val, COUNT(*) as count FROM tracking_module2 GROUP BY qualitative_val")->fetchAll();
-        $stats['rights_risks'] = $this->db->query("SELECT SUM(risk_situations) as risk_total, SUM(rights_restoration) as restoration_total FROM tracking_module3")->fetch();
-        $stats['health_stats'] = $this->db->query("SELECT SUM(vaccines_updated) as vaccines_ok, SUM(health_affiliated) as affiliated_ok FROM tracking_module4")->fetch();
 
-        Response::json(200, true, "Estadísticas cargadas", $stats);
+        // --- DISTRIBUCIÓN POR SEDE (Gráfica de Barras) ---
+        $stats['children_by_facility'] = $this->db->query("
+            SELECT facility AS name, COUNT(*) as value 
+            FROM children 
+            GROUP BY facility 
+            ORDER BY value DESC
+        ")->fetchAll();
+
+        // --- MÓDULO 1: DEMOGRAFÍA ---
+        $stats['demographics'] = [
+            'disability' => $this->db->query("SELECT COUNT(tracking_id) FROM tracking_module1 WHERE has_disability = 1")->fetchColumn(),
+            'special_support' => $this->db->query("SELECT COUNT(tracking_id) FROM tracking_module1 WHERE special_support = 1")->fetchColumn(),
+        ];
+
+        // --- MÓDULO 2: DESARROLLO PEDAGÓGICO (Gráfica de Torta 1) ---
+        $stats['development_status'] = $this->db->query("
+            SELECT qualitative_val AS name, COUNT(*) as value 
+            FROM tracking_module2 
+            GROUP BY qualitative_val
+        ")->fetchAll();
+
+        // --- MÓDULO 3: FAMILIA Y COMUNIDAD (Alertas) ---
+        $stats['rights_risks'] = $this->db->query("
+            SELECT 
+                SUM(risk_situations) as risk_total, 
+                SUM(rights_restoration) as restoration_total 
+            FROM tracking_module3
+        ")->fetch();
+
+        // --- MÓDULO 4: SALUD Y NUTRICIÓN (Gráfica de Torta 2) ---
+        $stats['health_regime'] = $this->db->query("
+            SELECT regime AS name, COUNT(*) as value 
+            FROM tracking_module4 
+            GROUP BY regime
+        ")->fetchAll();
+
+        $stats['health_stats'] = $this->db->query("
+            SELECT 
+                SUM(vaccines_updated) as vaccines_ok,
+                SUM(health_affiliated) as affiliated_ok,
+                COUNT(tracking_id) as total_mod4
+            FROM tracking_module4
+        ")->fetch();
+
+        // Extraer Alertas de Desnutrición desde Antropometría
+        $stats['malnutrition_alerts'] = $this->db->query("
+            SELECT COUNT(DISTINCT tracking_id) 
+            FROM tracking_anthropometry 
+            WHERE nutritional_classification LIKE '%Desnutrición%' OR nutritional_classification LIKE '%Riesgo%'
+        ")->fetchColumn();
+
+        Response::json(200, true, "Estadísticas avanzadas cargadas", $stats);
     }
 }
