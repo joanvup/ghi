@@ -44,7 +44,7 @@ class TrackingController {
         }
     }
 
-    // 2. Obtener un seguimiento específico con TODOS sus módulos
+    // 2. Obtener un seguimiento específico con TODOS sus módulos y logs
     public function show($id) {
         $stmt = $this->db->prepare("SELECT * FROM trackings WHERE id = :id");
         $stmt->execute([':id' => $id]);
@@ -52,6 +52,7 @@ class TrackingController {
 
         if (!$tracking) Response::json(404, false, "Seguimiento no encontrado");
 
+        // $stmtChild = $this->db->prepare("SELECT names, surnames, civil_registry FROM children WHERE id = :child_id");
         $stmtChild = $this->db->prepare("SELECT * FROM children WHERE id = :child_id");
         $stmtChild->execute([':child_id' => $tracking['child_id']]);
         $tracking['child'] = $stmtChild->fetch();
@@ -64,28 +65,39 @@ class TrackingController {
         $stmtM2->execute([':id' => $id]);
         $tracking['module2'] = $stmtM2->fetch() ?: null;
 
+        // MÓDULO 3 CON LOGS
         $stmtM3 = $this->db->prepare("SELECT * FROM tracking_module3 WHERE tracking_id = :id");
         $stmtM3->execute([':id' => $id]);
         $tracking['module3'] = $stmtM3->fetch() ?: null;
+        if ($tracking['module3']) {
+            $stmtFamLog = $this->db->prepare("SELECT log_date, description FROM tracking_log_family WHERE tracking_id = :id ORDER BY log_date ASC");
+            $stmtFamLog->execute([':id' => $id]);
+            $tracking['module3']['family_logs'] = $stmtFamLog->fetchAll();
+        }
 
         $stmtM4 = $this->db->prepare("SELECT * FROM tracking_module4 WHERE tracking_id = :id");
         $stmtM4->execute([':id' => $id]);
         $tracking['module4'] = $stmtM4->fetch() ?: null;
-
         if ($tracking['module4']) {
             $stmtAntro = $this->db->prepare("SELECT * FROM tracking_anthropometry WHERE tracking_id = :id ORDER BY take_number ASC");
             $stmtAntro->execute([':id' => $id]);
             $tracking['module4']['anthropometry'] = $stmtAntro->fetchAll();
         }
 
+        // MÓDULO 6 CON LOGS
         $stmtM6 = $this->db->prepare("SELECT * FROM tracking_module6 WHERE tracking_id = :id");
         $stmtM6->execute([':id' => $id]);
         $tracking['module6'] = $stmtM6->fetch() ?: null;
+        if ($tracking['module6']) {
+            $stmtTalLog = $this->db->prepare("SELECT log_date, description FROM tracking_log_talent WHERE tracking_id = :id ORDER BY log_date ASC");
+            $stmtTalLog->execute([':id' => $id]);
+            $tracking['module6']['talent_logs'] = $stmtTalLog->fetchAll();
+        }
 
         Response::json(200, true, "Detalle de seguimiento", $tracking);
     }
 
-    // 3. Crear Seguimiento Maestro y los módulos enviados (Validando permisos RBAC)
+    // 3. Crear Seguimiento Maestro y los módulos enviados
     public function store($userData) {
         $data = json_decode(file_get_contents("php://input"));
 
@@ -135,15 +147,23 @@ class TrackingController {
                 ]);
             }
 
-            // --- PROCESAR MÓDULO 3 ---
+            // --- PROCESAR MÓDULO 3 CON LOGS ---
             if (isset($data->module3)) {
                 if (!in_array('MODULO_3', $modulesUserHas)) throw new Exception("No tienes permiso para diligenciar el Módulo 3.");
                 $m3 = $data->module3;
-                $stmtM3 = $this->db->prepare("INSERT INTO tracking_module3 (tracking_id, risk_situations, rights_restoration, routes_articulation, family_training_actions) VALUES (?, ?, ?, ?, ?)");
+                $stmtM3 = $this->db->prepare("INSERT INTO tracking_module3 (tracking_id, risk_situations, rights_restoration, routes_articulation) VALUES (?, ?, ?, ?)");
                 $stmtM3->execute([
-                    $trackingId, $m3->risk_situations ?? 0, $m3->rights_restoration ?? 0, 
-                    $m3->routes_articulation ?? 0, $m3->family_training_actions ?? null
+                    $trackingId, $m3->risk_situations ?? 0, $m3->rights_restoration ?? 0, $m3->routes_articulation ?? 0
                 ]);
+
+                if (isset($m3->family_logs) && is_array($m3->family_logs)) {
+                    $stmtFam = $this->db->prepare("INSERT INTO tracking_log_family (tracking_id, log_date, description) VALUES (?, ?, ?)");
+                    foreach ($m3->family_logs as $log) {
+                        if (!empty($log->log_date) && !empty($log->description)) {
+                            $stmtFam->execute([$trackingId, $log->log_date, $log->description]);
+                        }
+                    }
+                }
             }
 
             // --- PROCESAR MÓDULO 4 ---
@@ -151,6 +171,7 @@ class TrackingController {
                 if (!in_array('MODULO_4', $modulesUserHas)) throw new Exception("No tienes permiso para diligenciar el Módulo 4.");
                 $m4 = $data->module4;
                 $stmtM4 = $this->db->prepare("INSERT INTO tracking_module4 (tracking_id, health_affiliated, regime, eps_name, vaccines_updated, growth_chart, controls_6_months, premature, gestational_age, breast_milk, exclusive_lactation_months, total_lactation_months, food_intro_age, oral_health_control, medical_assessment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                
                 $stmtM4->execute([
                     $trackingId, $m4->health_affiliated ?? 0, $m4->regime ?? 'Ninguno', $m4->eps_name ?? null, $m4->vaccines_updated ?? 0, $m4->growth_chart ?? 0, 
                     $this->num($m4->controls_6_months) ?? 0, $m4->premature ?? 0, $this->num($m4->gestational_age), $m4->breast_milk ?? 0, $this->num($m4->exclusive_lactation_months), 
@@ -168,12 +189,21 @@ class TrackingController {
                 }
             }
 
-            // --- PROCESAR MÓDULO 6 ---
+            // --- PROCESAR MÓDULO 6 CON LOGS ---
             if (isset($data->module6)) {
                 if (!in_array('MODULO_6', $modulesUserHas)) throw new Exception("No tienes permiso para diligenciar el Módulo 6.");
                 $m6 = $data->module6;
-                $stmtM6 = $this->db->prepare("INSERT INTO tracking_module6 (tracking_id, human_talent_qualification) VALUES (?, ?)");
-                $stmtM6->execute([$trackingId, $m6->human_talent_qualification ?? '']);
+                $stmtM6 = $this->db->prepare("INSERT INTO tracking_module6 (tracking_id) VALUES (?)");
+                $stmtM6->execute([$trackingId]);
+
+                if (isset($m6->talent_logs) && is_array($m6->talent_logs)) {
+                    $stmtTalent = $this->db->prepare("INSERT INTO tracking_log_talent (tracking_id, log_date, description) VALUES (?, ?, ?)");
+                    foreach ($m6->talent_logs as $log) {
+                        if (!empty($log->log_date) && !empty($log->description)) {
+                            $stmtTalent->execute([$trackingId, $log->log_date, $log->description]);
+                        }
+                    }
+                }
             }
 
             $this->db->commit();
@@ -185,7 +215,7 @@ class TrackingController {
         }
     }
 
-    // 4. Actualizar Seguimiento Existente (NUEVO MÉTODO)
+    // 4. Actualizar Seguimiento Existente
     public function update($id, $userData) {
         $data = json_decode(file_get_contents("php://input"));
         $modulesUserHas = $userData['modules'];
@@ -193,14 +223,10 @@ class TrackingController {
         try {
             $this->db->beginTransaction();
 
-            // Verificamos si existe
             $stmtCheck = $this->db->prepare("SELECT id FROM trackings WHERE id = :id");
             $stmtCheck->execute([':id' => $id]);
             if (!$stmtCheck->fetch()) throw new Exception("Seguimiento no encontrado.");
 
-            // Actualizamos módulos usando INSERT ... ON DUPLICATE KEY UPDATE
-            // Esto permite que un usuario agregue un módulo que no existía antes en este seguimiento
-            
             // --- MÓDULO 1 ---
             if (isset($data->module1) && in_array('MODULO_1', $modulesUserHas)) {
                 $m1 = $data->module1;
@@ -221,14 +247,27 @@ class TrackingController {
                 $stmtM2->execute([$id, $m2->participation, $m2->motivation, $m2->achievements, $m2->appropriate_strategies, $m2->strengthening_plan, $m2->explores_environment, $m2->interacts_material, $m2->health_behavior_news, $m2->absences, $m2->absences_reason, $m2->incidents, $m2->attention_routes, $m2->routes_desc, $m2->family_info, $m2->direct_observer, $m2->qualitative_scale, $m2->qualitative_no_reason, $m2->evaluates_dimensions, $m2->trimestral_val, $m2->advances, $m2->strengths_weaknesses, $m2->registers_results, $m2->qualitative_val]);
             }
 
-            // --- MÓDULO 3 ---
+            // --- MÓDULO 3 CON LOGS ---
             if (isset($data->module3) && in_array('MODULO_3', $modulesUserHas)) {
                 $m3 = $data->module3;
-                $sqlM3 = "INSERT INTO tracking_module3 (tracking_id, risk_situations, rights_restoration, routes_articulation, family_training_actions) 
-                          VALUES (?, ?, ?, ?, ?) 
-                          ON DUPLICATE KEY UPDATE risk_situations=VALUES(risk_situations), rights_restoration=VALUES(rights_restoration), routes_articulation=VALUES(routes_articulation), family_training_actions=VALUES(family_training_actions)";
+                $sqlM3 = "INSERT INTO tracking_module3 (tracking_id, risk_situations, rights_restoration, routes_articulation) 
+                          VALUES (?, ?, ?, ?) 
+                          ON DUPLICATE KEY UPDATE risk_situations=VALUES(risk_situations), rights_restoration=VALUES(rights_restoration), routes_articulation=VALUES(routes_articulation)";
                 $stmtM3 = $this->db->prepare($sqlM3);
-                $stmtM3->execute([$id, $m3->risk_situations, $m3->rights_restoration, $m3->routes_articulation, $m3->family_training_actions]);
+                $stmtM3->execute([$id, $m3->risk_situations, $m3->rights_restoration, $m3->routes_articulation]);
+
+                // Limpiar e insertar logs de Familia
+                $stmtDelFam = $this->db->prepare("DELETE FROM tracking_log_family WHERE tracking_id = ?");
+                $stmtDelFam->execute([$id]);
+
+                if (isset($m3->family_logs) && is_array($m3->family_logs)) {
+                    $stmtFam = $this->db->prepare("INSERT INTO tracking_log_family (tracking_id, log_date, description) VALUES (?, ?, ?)");
+                    foreach ($m3->family_logs as $log) {
+                        if (!empty($log->log_date) && !empty($log->description)) {
+                            $stmtFam->execute([$id, $log->log_date, $log->description]);
+                        }
+                    }
+                }
             }
 
             // --- MÓDULO 4 ---
@@ -244,7 +283,7 @@ class TrackingController {
                     $this->num($m4->total_lactation_months), $this->num($m4->food_intro_age), $m4->oral_health_control, $m4->medical_assessment
                 ]);
 
-                // Actualizar Antropometría: Borramos las anteriores y guardamos las nuevas
+                // Limpiar e insertar Antropometría
                 $stmtDelAntro = $this->db->prepare("DELETE FROM tracking_anthropometry WHERE tracking_id = ?");
                 $stmtDelAntro->execute([$id]);
 
@@ -259,14 +298,27 @@ class TrackingController {
                 }
             }
 
-            // --- MÓDULO 6 ---
+            // --- MÓDULO 6 CON LOGS ---
             if (isset($data->module6) && in_array('MODULO_6', $modulesUserHas)) {
                 $m6 = $data->module6;
-                $sqlM6 = "INSERT INTO tracking_module6 (tracking_id, human_talent_qualification) 
-                          VALUES (?, ?) 
-                          ON DUPLICATE KEY UPDATE human_talent_qualification=VALUES(human_talent_qualification)";
+                $sqlM6 = "INSERT INTO tracking_module6 (tracking_id) 
+                          VALUES (?) 
+                          ON DUPLICATE KEY UPDATE tracking_id=VALUES(tracking_id)";
                 $stmtM6 = $this->db->prepare($sqlM6);
-                $stmtM6->execute([$id, $m6->human_talent_qualification]);
+                $stmtM6->execute([$id]);
+
+                // Limpiar e insertar logs de Talento Humano
+                $stmtDelTalent = $this->db->prepare("DELETE FROM tracking_log_talent WHERE tracking_id = ?");
+                $stmtDelTalent->execute([$id]);
+
+                if (isset($m6->talent_logs) && is_array($m6->talent_logs)) {
+                    $stmtTalent = $this->db->prepare("INSERT INTO tracking_log_talent (tracking_id, log_date, description) VALUES (?, ?, ?)");
+                    foreach ($m6->talent_logs as $log) {
+                        if (!empty($log->log_date) && !empty($log->description)) {
+                            $stmtTalent->execute([$id, $log->log_date, $log->description]);
+                        }
+                    }
+                }
             }
 
             $this->db->commit();

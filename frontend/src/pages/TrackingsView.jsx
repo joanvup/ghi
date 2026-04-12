@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, Eye, CheckCircle, Activity, Users, BookOpen, HeartPulse, ShieldAlert, Scale, Search, Edit, Printer, X } from 'lucide-react';
+import { Plus, Eye, CheckCircle, Activity, Users, BookOpen, HeartPulse, ShieldAlert, Scale, Search, Edit, Printer, X, Trash2 } from 'lucide-react';
 
 const TrackingsView = () => {
     const { user } = useContext(AuthContext);
@@ -27,7 +27,8 @@ const TrackingsView = () => {
                 health_behavior_news: '0', absences: '0', absences_reason: '', incidents: '0', attention_routes: '0', routes_desc: '', family_info: '0',
                 direct_observer: '0', qualitative_scale: '0', qualitative_no_reason: '', evaluates_dimensions: '0', trimestral_val: '0', advances: '0', strengths_weaknesses: '0', registers_results: '0', qualitative_val: 'ESPERADO'
             } : undefined,
-            module3: user.modules.includes('MODULO_3') ? { risk_situations: '0', rights_restoration: '0', routes_articulation: '0', family_training_actions: '' } : undefined,
+            // Modulo 3 ahora usa family_logs
+            module3: user.modules.includes('MODULO_3') ? { risk_situations: '0', rights_restoration: '0', routes_articulation: '0', family_logs: [] } : undefined,
             module4: user.modules.includes('MODULO_4') ? {
                 health_affiliated: '0', regime: 'Ninguno', eps_name: '', vaccines_updated: '0', growth_chart: '0', controls_6_months: '0',
                 premature: '0', gestational_age: '', breast_milk: '0', exclusive_lactation_months: '', total_lactation_months: '', food_intro_age: '', oral_health_control: '0', medical_assessment: '0',
@@ -38,7 +39,8 @@ const TrackingsView = () => {
                     { take_number: 4, weight_kg: '', height_cm: '', nutritional_classification: '' }
                 ]
             } : undefined,
-            module6: user.modules.includes('MODULO_6') ? { human_talent_qualification: '' } : undefined,
+            // Modulo 6 ahora usa talent_logs
+            module6: user.modules.includes('MODULO_6') ? { talent_logs: [] } : undefined,
         };
     }
 
@@ -85,6 +87,46 @@ const TrackingsView = () => {
         }));
     };
 
+    // --- NUEVAS FUNCIONES PARA BITÁCORAS DINÁMICAS ---
+    const addLog = (moduleName, logType) => {
+        setFormData(prev => ({
+            ...prev,
+            [moduleName]: {
+                ...prev[moduleName],
+                [logType]: [...(prev[moduleName][logType] || []), { log_date: '', description: '' }]
+            }
+        }));
+    };
+
+    const removeLog = (moduleName, logType, index) => {
+        setFormData(prev => {
+            const newLogs = [...prev[moduleName][logType]];
+            newLogs.splice(index, 1);
+            return {
+                ...prev,
+                [moduleName]: {
+                    ...prev[moduleName],
+                    [logType]: newLogs
+                }
+            };
+        });
+    };
+
+    const handleLogChange = (moduleName, logType, index, field, value) => {
+        setFormData(prev => {
+            const newLogs = [...prev[moduleName][logType]];
+            newLogs[index][field] = value;
+            return {
+                ...prev,
+                [moduleName]: {
+                    ...prev[moduleName],
+                    [logType]: newLogs
+                }
+            };
+        });
+    };
+    // --------------------------------------------------
+
     const handleEdit = async (trackingId) => {
         try {
             const res = await api.get(`/trackings/${trackingId}`);
@@ -96,8 +138,16 @@ const TrackingsView = () => {
 
             if (data.module1 && newForm.module1) newForm.module1 = { ...newForm.module1, ...data.module1 };
             if (data.module2 && newForm.module2) newForm.module2 = { ...newForm.module2, ...data.module2 };
-            if (data.module3 && newForm.module3) newForm.module3 = { ...newForm.module3, ...data.module3 };
-            if (data.module6 && newForm.module6) newForm.module6 = { ...newForm.module6, ...data.module6 };
+            
+            if (data.module3 && newForm.module3) {
+                newForm.module3 = { ...newForm.module3, ...data.module3 };
+                newForm.module3.family_logs = data.module3.family_logs || []; // Cargar logs Familia
+            }
+            
+            if (data.module6 && newForm.module6) {
+                newForm.module6 = { ...newForm.module6, ...data.module6 };
+                newForm.module6.talent_logs = data.module6.talent_logs || []; // Cargar logs Talento
+            }
 
             if (data.module4 && newForm.module4) {
                 newForm.module4 = { ...newForm.module4, ...data.module4 };
@@ -226,7 +276,6 @@ const TrackingsView = () => {
                 ======================================================================= */}
             {showPreviewModal && previewData && (
                 <div>
-                    {/* ESTILOS DE IMPRESIÓN DINÁMICOS */}
                     <style type="text/css">
                         {`
                         @media print {
@@ -244,7 +293,6 @@ const TrackingsView = () => {
                                 height: auto !important; 
                                 display: block !important; 
                             }
-                            /* Forzar la impresión de colores de fondo de Tailwind */
                             * { 
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important; 
@@ -256,7 +304,6 @@ const TrackingsView = () => {
                     <div className="fixed inset-0 z-[100] bg-gray-900 bg-opacity-80 flex justify-center p-4 overflow-y-auto print:absolute print:inset-0 print:block print:w-full print:h-auto print:overflow-visible print:bg-white print:p-0">
                         <div className="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col relative print:w-full print:max-w-none print:shadow-none print:border-none print:rounded-none print:block print:h-auto print:m-0">
 
-                            {/* BOTONES DE ACCIÓN (Ocultos en impresión) */}
                             <div className="print:hidden sticky top-0 bg-gray-100 border-b p-4 flex justify-between items-center rounded-t-xl z-10 shadow-sm">
                                 <h2 className="text-xl font-black text-gray-800">Previsualización del Documento</h2>
                                 <div className="flex gap-3">
@@ -269,9 +316,7 @@ const TrackingsView = () => {
                                 </div>
                             </div>
 
-                            {/* CONTENIDO DEL REPORTE (Lo que se imprime) */}
                             <div className="p-8 print:p-2 bg-white text-gray-800 font-sans text-sm">
-                                {/* Cabecera Formal */}
                                 <div className="border-b-2 border-gray-800 pb-4 mb-6 flex justify-between items-end print:break-inside-avoid">
                                     <div>
                                         <h1 className="text-2xl font-black uppercase text-gray-900 tracking-tight">Reporte de Seguimiento Integral</h1>
@@ -283,23 +328,24 @@ const TrackingsView = () => {
                                     </div>
                                 </div>
 
-                                {/* Metadatos */}
                                 <div className="flex justify-between text-xs text-gray-500 mb-6 bg-gray-50 p-2 rounded border print:break-inside-avoid">
                                     <p><strong>Fecha de Creación:</strong> {previewData.tracking_date} {previewData.tracking_time}</p>
                                     <p><strong>Impreso el:</strong> {new Date().toLocaleDateString()}</p>
                                 </div>
 
-                                {/* Información del Niño */}
+                                {/* 1. DATOS DEL PARTICIPANTE COMPLETOS */}
                                 <div className="mb-6 print:break-inside-avoid">
                                     <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">1. Datos del Participante</h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-blue-50">
+                                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 border rounded-lg bg-blue-50">
                                         <div className="col-span-2"><p className="text-xs text-gray-500">Nombres y Apellidos</p><p className="font-bold text-base">{previewData.child.names} {previewData.child.surnames}</p></div>
                                         <div><p className="text-xs text-gray-500">Registro Civil</p><p className="font-bold text-base">{previewData.child.civil_registry}</p></div>
-                                        <div><p className="text-xs text-gray-500">Sexo</p><p className="font-bold text-base">{previewData.child.gender}</p></div>
+                                        <div><p className="text-xs text-gray-500">Sexo</p><p className="font-bold text-base">{previewData.child.gender || 'N/A'}</p></div>
+                                        <div><p className="text-xs text-gray-500">Fecha de Ingreso</p><p className="font-bold text-base">{previewData.child.entry_date || 'N/A'}</p></div>
+                                        <div><p className="text-xs text-gray-500">Fecha de Retiro</p><p className="font-bold text-base text-red-600">{previewData.child.exit_date || 'N/A'}</p></div>
                                     </div>
                                 </div>
 
-                                {/* Módulo 1 */}
+                                {/* MÓDULO 1 */}
                                 {previewData.module1 && (
                                     <div className="mb-6 print:break-inside-avoid">
                                         <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 1: Información del Participante</h3>
@@ -308,12 +354,13 @@ const TrackingsView = () => {
                                             <p><strong>¿Discapacidad?:</strong> {yesNo(previewData.module1.has_disability)}</p>
                                             <p><strong>Tipo Discapacidad:</strong> {previewData.module1.disability_type}</p>
                                             <p><strong>Diagnóstico Médico:</strong> {yesNo(previewData.module1.medical_diagnosis)}</p>
-                                            <p className="col-span-2"><strong>Apoyo Especial:</strong> {yesNo(previewData.module1.special_support)} {previewData.module1.special_support_desc ? `(${previewData.module1.special_support_desc})` : ''}</p>
+                                            <p><strong>Apoyo Especial:</strong> {yesNo(previewData.module1.special_support)}</p>
+                                            <p className="col-span-3"><strong>Descripción Apoyo Especial:</strong> {previewData.module1.special_support_desc || 'N/A'}</p>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Módulo 2 */}
+                                {/* MÓDULO 2 */}
                                 {previewData.module2 && (
                                     <div className="mb-6 print:break-inside-avoid">
                                         <div className="flex justify-between items-end border-b border-gray-300 pb-1 mb-3">
@@ -324,6 +371,7 @@ const TrackingsView = () => {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {/* Pedagógico Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Pedagógico</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -331,32 +379,45 @@ const TrackingsView = () => {
                                                     <li>Motivación: <strong>{yesNo(previewData.module2.motivation)}</strong></li>
                                                     <li>Estrategias Acordes: <strong>{yesNo(previewData.module2.appropriate_strategies)}</strong></li>
                                                     <li>Plan Fortalecimiento: <strong>{yesNo(previewData.module2.strengthening_plan)}</strong></li>
+                                                    <li>Explora entorno: <strong>{yesNo(previewData.module2.explores_environment)}</strong></li>
+                                                    <li>Interactúa material: <strong>{yesNo(previewData.module2.interacts_material)}</strong></li>
                                                 </ul>
                                                 <div className="mt-2 text-xs bg-yellow-50 p-2 border border-yellow-200"><strong>Logros:</strong> {previewData.module2.achievements || 'Ninguno registrado'}</div>
                                             </div>
+                                            
+                                            {/* Novedades Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Novedades</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
                                                     <li>Salud/Comportamiento: <strong>{yesNo(previewData.module2.health_behavior_news)}</strong></li>
-                                                    <li>Inasistencias: <strong>{yesNo(previewData.module2.absences)}</strong> {previewData.module2.absences_reason && `(${previewData.module2.absences_reason})`}</li>
+                                                    <li>Inasistencias: <strong>{yesNo(previewData.module2.absences)}</strong></li>
+                                                    <li className="text-gray-600 ml-4 border-l pl-2 list-none">Motivo: {previewData.module2.absences_reason || 'N/A'}</li>
                                                     <li>Incidentes: <strong>{yesNo(previewData.module2.incidents)}</strong></li>
-                                                    <li>Rutas Activadas: <strong>{yesNo(previewData.module2.attention_routes)}</strong> {previewData.module2.routes_desc && `(${previewData.module2.routes_desc})`}</li>
+                                                    <li>Rutas Activadas: <strong>{yesNo(previewData.module2.attention_routes)}</strong></li>
+                                                    <li className="text-gray-600 ml-4 border-l pl-2 list-none">Cuáles: {previewData.module2.routes_desc || 'N/A'}</li>
+                                                    <li>Info a familia: <strong>{yesNo(previewData.module2.family_info)}</strong></li>
                                                 </ul>
                                             </div>
+
+                                            {/* Desarrollo Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Desarrollo</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
                                                     <li>Observador Directo: <strong>{yesNo(previewData.module2.direct_observer)}</strong></li>
                                                     <li>Escala Cualitativa: <strong>{yesNo(previewData.module2.qualitative_scale)}</strong></li>
+                                                    <li className="text-gray-600 ml-4 border-l pl-2 list-none">Por qué NO: {previewData.module2.qualitative_no_reason || 'N/A'}</li>
+                                                    <li>Evalúa dimensiones: <strong>{yesNo(previewData.module2.evaluates_dimensions)}</strong></li>
                                                     <li>Valoración Trimestral: <strong>{yesNo(previewData.module2.trimestral_val)}</strong></li>
+                                                    <li>Avances evidentes: <strong>{yesNo(previewData.module2.advances)}</strong></li>
                                                     <li>Fortalezas/Dificultades: <strong>{yesNo(previewData.module2.strengths_weaknesses)}</strong></li>
+                                                    <li>Registra resultados: <strong>{yesNo(previewData.module2.registers_results)}</strong></li>
                                                 </ul>
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Módulo 3 */}
+                                {/* MÓDULO 3 CON LOGS */}
                                 {previewData.module3 && (
                                     <div className="mb-6 print:break-inside-avoid">
                                         <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 3: Familia y Comunidad</h3>
@@ -364,12 +425,27 @@ const TrackingsView = () => {
                                             <p><strong>Situaciones Riesgo:</strong> {yesNo(previewData.module3.risk_situations)}</p>
                                             <p><strong>Restablecimiento Derechos:</strong> {yesNo(previewData.module3.rights_restoration)}</p>
                                             <p><strong>Articulación Rutas:</strong> {yesNo(previewData.module3.routes_articulation)}</p>
-                                            <div className="col-span-3"><strong>Acciones formación a familias:</strong> <span className="text-gray-700 italic">{previewData.module3.family_training_actions || 'No registradas'}</span></div>
+                                            
+                                            <div className="col-span-3 mt-2">
+                                                <strong>Bitácora de Acciones de Formación a Familias:</strong>
+                                                {previewData.module3.family_logs && previewData.module3.family_logs.length > 0 ? (
+                                                    <ul className="mt-2 space-y-2">
+                                                        {previewData.module3.family_logs.map((log, idx) => (
+                                                            <li key={idx} className="text-xs bg-amber-50 p-2 border border-amber-100 rounded">
+                                                                <span className="font-bold text-amber-800 mr-2 border-b border-amber-200">{log.log_date}</span>
+                                                                {log.description}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                ) : (
+                                                    <p className="text-gray-500 italic mt-1 text-xs">No hay registros en la bitácora.</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Módulo 4 */}
+                                {/* MÓDULO 4 */}
                                 {previewData.module4 && (
                                     <div className="mb-6 print:break-inside-avoid">
                                         <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 4: Salud y Nutrición</h3>
@@ -387,9 +463,11 @@ const TrackingsView = () => {
                                             <p><strong>Meses Exclusiva:</strong> {previewData.module4.exclusive_lactation_months || 'N/A'}</p>
                                             <p><strong>Meses Total:</strong> {previewData.module4.total_lactation_months || 'N/A'}</p>
                                             <p><strong>Intro Alimentos (meses):</strong> {previewData.module4.food_intro_age || 'N/A'}</p>
+                                            
+                                            <p className="col-span-2"><strong>Control Salud Oral:</strong> {yesNo(previewData.module4.oral_health_control)}</p>
+                                            <p className="col-span-2"><strong>Valoración Médica:</strong> {yesNo(previewData.module4.medical_assessment)}</p>
                                         </div>
 
-                                        {/* Antropometría Tabla Print */}
                                         {previewData.module4.anthropometry && previewData.module4.anthropometry.length > 0 && (
                                             <div className="border border-gray-300 rounded overflow-hidden">
                                                 <div className="bg-gray-100 font-bold text-center text-xs p-1 border-b border-gray-300">Registro de Antropometría</div>
@@ -413,11 +491,25 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* Módulo 6 */}
+                                {/* MÓDULO 6 CON LOGS */}
                                 {previewData.module6 && (
                                     <div className="mb-6 print:break-inside-avoid">
                                         <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">Módulo 6: Comunidades de Aprendizaje</h3>
-                                        <p className="text-sm"><strong>Cualificación talento humano:</strong> <br /> <span className="text-gray-700 italic block mt-1 bg-gray-50 p-2 border rounded">{previewData.module6.human_talent_qualification || 'Sin registros.'}</span></p>
+                                        <div className="mt-2">
+                                            <strong>Bitácora de Cualificación al talento humano:</strong>
+                                            {previewData.module6.talent_logs && previewData.module6.talent_logs.length > 0 ? (
+                                                <ul className="mt-2 space-y-2">
+                                                    {previewData.module6.talent_logs.map((log, idx) => (
+                                                        <li key={idx} className="text-xs bg-purple-50 p-2 border border-purple-100 rounded">
+                                                            <span className="font-bold text-purple-800 mr-2 border-b border-purple-200">{log.log_date}</span>
+                                                            {log.description}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <p className="text-gray-500 italic mt-1 text-xs">No hay registros en la bitácora.</p>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
@@ -448,7 +540,6 @@ const TrackingsView = () => {
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center z-50 p-2 sm:p-6 overflow-hidden print:hidden">
                     <div className="bg-gray-100 rounded-xl shadow-2xl w-full max-w-6xl max-h-full flex flex-col">
 
-                        {/* CABECERA DEL MODAL */}
                         <div className="px-6 py-4 border-b bg-white flex justify-between items-center rounded-t-xl">
                             <div>
                                 <h2 className="text-2xl font-black text-blue-800 flex items-center gap-2">
@@ -461,11 +552,9 @@ const TrackingsView = () => {
                             </button>
                         </div>
 
-                        {/* CUERPO SCROLLABLE DEL MODAL */}
                         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                             <form id="trackingForm" onSubmit={handleSubmit} className="space-y-6">
 
-                                {/* SELECTOR MAESTRO DE NIÑO */}
                                 <div className={`p-5 rounded-xl shadow-sm border-l-4 ${formData.id ? 'bg-gray-100 border-gray-400' : 'bg-white border-blue-600'}`}>
                                     <label className="font-bold text-gray-800 block mb-2 text-lg">1. Participante Seleccionado</label>
                                     <select
@@ -524,8 +613,6 @@ const TrackingsView = () => {
                                             </div>
                                         </div>
                                         <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                                            {/* Subsección: Pedagógico */}
                                             <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                 <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Aspecto Pedagógico</h4>
                                                 <div className="grid grid-cols-2 gap-3">
@@ -542,7 +629,6 @@ const TrackingsView = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Subsección: Novedades */}
                                             <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                 <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Novedades</h4>
                                                 <div className="grid grid-cols-2 gap-3">
@@ -558,7 +644,6 @@ const TrackingsView = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Subsección: Desarrollo */}
                                             <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                 <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Seguimiento al Desarrollo</h4>
                                                 <div className="grid grid-cols-2 gap-3">
@@ -578,7 +663,7 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* MÓDULO 3: FAMILIA Y COMUNIDAD */}
+                                {/* MÓDULO 3: FAMILIA Y COMUNIDAD CON LOGS */}
                                 {user.modules.includes('MODULO_3') && (
                                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                         <div className="bg-amber-50 px-5 py-3 border-b border-amber-100 flex items-center gap-2">
@@ -588,9 +673,36 @@ const TrackingsView = () => {
                                             <SelectYesNo label="Situaciones de riesgo" mod="module3" field="risk_situations" />
                                             <SelectYesNo label="Restablecimiento derechos" mod="module3" field="rights_restoration" />
                                             <SelectYesNo label="Articulación rutas" mod="module3" field="routes_articulation" />
-                                            <div className="md:col-span-4">
-                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Acciones de formación a familias</label>
-                                                <textarea className="w-full border border-gray-300 p-2 rounded text-sm" rows="2" value={formData.module3.family_training_actions} onChange={e => handleChange('module3', 'family_training_actions', e.target.value)}></textarea>
+                                            
+                                            {/* BITÁCORA DINÁMICA DE FAMILIA */}
+                                            <div className="md:col-span-4 mt-2">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <label className="block text-sm font-bold text-gray-700">Bitácora: Acciones de formación a familias</label>
+                                                    <button type="button" onClick={() => addLog('module3', 'family_logs')} className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors">
+                                                        <Plus className="w-4 h-4"/> Agregar Registro
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="space-y-3">
+                                                    {formData.module3.family_logs.map((log, idx) => (
+                                                        <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Fecha</label>
+                                                                <input type="date" className="border border-gray-300 p-2 rounded text-sm w-36 outline-none focus:ring-2 focus:ring-amber-500 bg-white" value={log.log_date} onChange={e => handleLogChange('module3', 'family_logs', idx, 'log_date', e.target.value)} required />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la acción</label>
+                                                                <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white" rows="2" placeholder="Escriba el detalle aquí..." value={log.description} onChange={e => handleLogChange('module3', 'family_logs', idx, 'description', e.target.value)} required></textarea>
+                                                            </div>
+                                                            <button type="button" onClick={() => removeLog('module3', 'family_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5"/></button>
+                                                        </div>
+                                                    ))}
+                                                    {formData.module3.family_logs.length === 0 && (
+                                                        <div className="text-sm text-gray-500 italic text-center p-6 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                                                            Aún no hay acciones registradas en la bitácora. Haga clic en "Agregar Registro".
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -704,15 +816,41 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* MÓDULO 6: COMUNIDADES DE APRENDIZAJE */}
+                                {/* MÓDULO 6: COMUNIDADES DE APRENDIZAJE CON LOGS */}
                                 {user.modules.includes('MODULO_6') && (
                                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                         <div className="bg-purple-50 px-5 py-3 border-b border-purple-100 flex items-center gap-2">
                                             <CheckCircle className="w-5 h-5 text-purple-600" /><h3 className="font-bold text-lg text-purple-900">Módulo 6: Comunidades de Aprendizaje</h3>
                                         </div>
                                         <div className="p-5">
-                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Cualificación al talento humano (Describa)</label>
-                                            <textarea className="w-full border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" rows="3" value={formData.module6.human_talent_qualification} onChange={e => handleChange('module6', 'human_talent_qualification', e.target.value)}></textarea>
+                                            {/* BITÁCORA DINÁMICA DE TALENTO HUMANO */}
+                                            <div className="flex justify-between items-center mb-3">
+                                                <label className="block text-sm font-bold text-gray-700">Bitácora: Cualificación al talento humano</label>
+                                                <button type="button" onClick={() => addLog('module6', 'talent_logs')} className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors">
+                                                    <Plus className="w-4 h-4"/> Agregar Registro
+                                                </button>
+                                            </div>
+                                            
+                                            <div className="space-y-3">
+                                                {formData.module6.talent_logs.map((log, idx) => (
+                                                    <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Fecha</label>
+                                                            <input type="date" className="border border-gray-300 p-2 rounded text-sm w-36 outline-none focus:ring-2 focus:ring-purple-500 bg-white" value={log.log_date} onChange={e => handleLogChange('module6', 'talent_logs', idx, 'log_date', e.target.value)} required />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la cualificación</label>
+                                                            <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" rows="2" placeholder="Escriba el detalle aquí..." value={log.description} onChange={e => handleLogChange('module6', 'talent_logs', idx, 'description', e.target.value)} required></textarea>
+                                                        </div>
+                                                        <button type="button" onClick={() => removeLog('module6', 'talent_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5"/></button>
+                                                    </div>
+                                                ))}
+                                                {formData.module6.talent_logs.length === 0 && (
+                                                    <div className="text-sm text-gray-500 italic text-center p-6 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                                                        Aún no hay cualificaciones registradas en la bitácora. Haga clic en "Agregar Registro".
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
