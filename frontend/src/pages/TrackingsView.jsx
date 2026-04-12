@@ -1,33 +1,36 @@
 import React, { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, Eye, CheckCircle, Activity, Users, BookOpen, HeartPulse, ShieldAlert, Scale, Search, Edit, Printer, X, Trash2 } from 'lucide-react';
+import { Plus, Eye, CheckCircle, Activity, Users, BookOpen, HeartPulse, ShieldAlert, Scale, Search, Edit, Printer, X, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 const TrackingsView = () => {
     const { user } = useContext(AuthContext);
     const [trackings, setTrackings] = useState([]);
     const [children, setChildren] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
 
-    // Estados para la Previsualización / PDF
+    // Estados de Búsqueda y Paginación
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Estado del buscador interno del Modal
+    const [childSearchTerm, setChildSearchTerm] = useState('');
+
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewData, setPreviewData] = useState(null);
 
-    // Estado del Formulario Integral
     const [formData, setFormData] = useState(getInitialFormData());
 
     function getInitialFormData() {
         return {
-            id: null,
-            child_id: '',
+            id: null, child_id: '',
             module1: user.modules.includes('MODULO_1') ? { ethnicity: 'Ninguna', has_disability: '0', disability_type: 'Ninguna', medical_diagnosis: '0', special_support: '0', special_support_desc: '' } : undefined,
             module2: user.modules.includes('MODULO_2') ? {
                 participation: '0', motivation: '0', achievements: '', appropriate_strategies: '0', strengthening_plan: '0', explores_environment: '0', interacts_material: '0',
                 health_behavior_news: '0', absences: '0', absences_reason: '', incidents: '0', attention_routes: '0', routes_desc: '', family_info: '0',
                 direct_observer: '0', qualitative_scale: '0', qualitative_no_reason: '', evaluates_dimensions: '0', trimestral_val: '0', advances: '0', strengths_weaknesses: '0', registers_results: '0', qualitative_val: 'ESPERADO'
             } : undefined,
-            // Modulo 3 ahora usa family_logs
             module3: user.modules.includes('MODULO_3') ? { risk_situations: '0', rights_restoration: '0', routes_articulation: '0', family_logs: [] } : undefined,
             module4: user.modules.includes('MODULO_4') ? {
                 health_affiliated: '0', regime: 'Ninguno', eps_name: '', vaccines_updated: '0', growth_chart: '0', controls_6_months: '0',
@@ -39,7 +42,6 @@ const TrackingsView = () => {
                     { take_number: 4, weight_kg: '', height_cm: '', nutritional_classification: '' }
                 ]
             } : undefined,
-            // Modulo 6 ahora usa talent_logs
             module6: user.modules.includes('MODULO_6') ? { talent_logs: [] } : undefined,
         };
     }
@@ -51,7 +53,14 @@ const TrackingsView = () => {
                 api.get('/children')
             ]);
             setTrackings(trackRes.data.data || []);
-            setChildren(childRes.data.data || []);
+
+            // Ordenar los niños alfabéticamente para el select
+            const sortedChildren = (childRes.data.data || []).sort((a, b) => {
+                const nameA = `${a.names} ${a.surnames}`.toUpperCase();
+                const nameB = `${b.names} ${b.surnames}`.toUpperCase();
+                return nameA.localeCompare(nameB);
+            });
+            setChildren(sortedChildren);
         } catch (error) {
             console.error("Error cargando datos de seguimientos", error);
             setTrackings([]);
@@ -61,6 +70,7 @@ const TrackingsView = () => {
 
     useEffect(() => { loadData(); }, []);
 
+    // --- LÓGICA DE BÚSQUEDA Y PAGINACIÓN (TABLA PRINCIPAL) ---
     const filteredTrackings = trackings.filter(t => {
         const term = searchTerm.toLowerCase();
         const fullName = `${t.child_names} ${t.child_surnames}`.toLowerCase();
@@ -68,47 +78,48 @@ const TrackingsView = () => {
         return fullName.includes(term) || registry.includes(term);
     });
 
+    const totalPages = Math.ceil(filteredTrackings.length / itemsPerPage) || 1;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentTrackings = filteredTrackings.slice(startIndex, startIndex + itemsPerPage);
+
+    useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+
+    // --- LÓGICA DE BÚSQUEDA INTERNA (MODAL SELECTOR) ---
+    const filteredModalChildren = children.filter(c => {
+        const term = childSearchTerm.toLowerCase();
+        const fullName = `${c.names} ${c.surnames}`.toLowerCase();
+        const registry = String(c.civil_registry).toLowerCase();
+        return fullName.includes(term) || registry.includes(term);
+    });
+
+    // --- VALIDACIÓN DE ESTADO (RETIRO) ---
+    const isRetired = (exitDateStr) => {
+        if (!exitDateStr) return false;
+        // Obtenemos solo la fecha YYYY-MM-DD sin huso horario
+        const today = new Date().toLocaleDateString('en-CA'); // 'en-CA' saca YYYY-MM-DD
+        return exitDateStr < today;
+    };
+
+    // --- MANEJADORES DE FORMULARIO ---
     const handleChange = (moduleName, field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [moduleName]: {
-                ...prev[moduleName],
-                [field]: value
-            }
-        }));
+        setFormData(prev => ({ ...prev, [moduleName]: { ...prev[moduleName], [field]: value } }));
     };
 
     const handleAnthropometryChange = (index, field, value) => {
         const newAntro = [...formData.module4.anthropometry];
         newAntro[index][field] = value;
-        setFormData(prev => ({
-            ...prev,
-            module4: { ...prev.module4, anthropometry: newAntro }
-        }));
+        setFormData(prev => ({ ...prev, module4: { ...prev.module4, anthropometry: newAntro } }));
     };
 
-    // --- NUEVAS FUNCIONES PARA BITÁCORAS DINÁMICAS ---
     const addLog = (moduleName, logType) => {
-        setFormData(prev => ({
-            ...prev,
-            [moduleName]: {
-                ...prev[moduleName],
-                [logType]: [...(prev[moduleName][logType] || []), { log_date: '', description: '' }]
-            }
-        }));
+        setFormData(prev => ({ ...prev, [moduleName]: { ...prev[moduleName], [logType]: [...(prev[moduleName][logType] || []), { log_date: '', description: '' }] } }));
     };
 
     const removeLog = (moduleName, logType, index) => {
         setFormData(prev => {
             const newLogs = [...prev[moduleName][logType]];
             newLogs.splice(index, 1);
-            return {
-                ...prev,
-                [moduleName]: {
-                    ...prev[moduleName],
-                    [logType]: newLogs
-                }
-            };
+            return { ...prev, [moduleName]: { ...prev[moduleName], [logType]: newLogs } };
         });
     };
 
@@ -116,18 +127,17 @@ const TrackingsView = () => {
         setFormData(prev => {
             const newLogs = [...prev[moduleName][logType]];
             newLogs[index][field] = value;
-            return {
-                ...prev,
-                [moduleName]: {
-                    ...prev[moduleName],
-                    [logType]: newLogs
-                }
-            };
+            return { ...prev, [moduleName]: { ...prev[moduleName], [logType]: newLogs } };
         });
     };
-    // --------------------------------------------------
 
     const handleEdit = async (trackingId) => {
+        // Validación Front-end: ¿Está retirado?
+        const trackingObj = trackings.find(t => t.id === trackingId);
+        if (trackingObj && isRetired(trackingObj.exit_date)) {
+            return alert("No se pueden modificar seguimientos de un niño que ya fue retirado.");
+        }
+
         try {
             const res = await api.get(`/trackings/${trackingId}`);
             const data = res.data.data;
@@ -138,15 +148,15 @@ const TrackingsView = () => {
 
             if (data.module1 && newForm.module1) newForm.module1 = { ...newForm.module1, ...data.module1 };
             if (data.module2 && newForm.module2) newForm.module2 = { ...newForm.module2, ...data.module2 };
-            
+
             if (data.module3 && newForm.module3) {
                 newForm.module3 = { ...newForm.module3, ...data.module3 };
-                newForm.module3.family_logs = data.module3.family_logs || []; // Cargar logs Familia
+                newForm.module3.family_logs = data.module3.family_logs || [];
             }
-            
+
             if (data.module6 && newForm.module6) {
                 newForm.module6 = { ...newForm.module6, ...data.module6 };
-                newForm.module6.talent_logs = data.module6.talent_logs || []; // Cargar logs Talento
+                newForm.module6.talent_logs = data.module6.talent_logs || [];
             }
 
             if (data.module4 && newForm.module4) {
@@ -172,6 +182,7 @@ const TrackingsView = () => {
             };
 
             setFormData(cleanNulls(newForm));
+            setChildSearchTerm(''); // Limpiar busqueda
             setShowModal(true);
         } catch (error) {
             alert("Error al cargar los datos del seguimiento para edición.");
@@ -195,6 +206,19 @@ const TrackingsView = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.child_id) return alert("Debe seleccionar un niño/a participante.");
+
+        // Validación Front-end adicional (Req 2 y 4)
+        const selectedChild = children.find(c => c.id == formData.child_id);
+        if (selectedChild && isRetired(selectedChild.exit_date)) {
+            return alert("No se pueden agregar seguimientos a un niño que ya fue retirado.");
+        }
+
+        if (!formData.id) { // Si estamos creando
+            const hasTracking = trackings.some(t => t.child_id == formData.child_id);
+            if (hasTracking && (!selectedChild || !selectedChild.exit_date)) {
+                return alert("El niño ya tiene un seguimiento activo. Debe modificar el existente, no crear uno nuevo.");
+            }
+        }
 
         try {
             if (formData.id) {
@@ -238,41 +262,74 @@ const TrackingsView = () => {
                             onChange={e => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <button onClick={() => { setFormData(getInitialFormData()); setShowModal(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg transition-all font-bold whitespace-nowrap">
+                    <button onClick={() => { setChildSearchTerm(''); setFormData(getInitialFormData()); setShowModal(true); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg transition-all font-bold whitespace-nowrap">
                         <Plus className="w-5 h-5" /> Nuevo
                     </button>
                 </div>
             </div>
 
             {/* TABLA DE SEGUIMIENTOS */}
-            <div className="bg-white rounded-xl shadow-md overflow-x-auto print:hidden">
-                <table className="w-full text-left text-sm text-gray-600">
-                    <thead className="bg-gray-100 border-b text-gray-800">
-                        <tr><th className="p-4 font-bold">Código</th><th className="p-4 font-bold">Fecha y Hora</th><th className="p-4 font-bold">Niño/a Participante</th><th className="p-4 font-bold">Creado por</th><th className="p-4 text-center font-bold">Acciones</th></tr>
-                    </thead>
-                    <tbody>
-                        {filteredTrackings.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-500 font-medium">No se encontraron seguimientos.</td></tr>}
-                        {filteredTrackings.map(t => (
-                            <tr key={t.id} className="border-b hover:bg-blue-50 transition-colors">
-                                <td className="p-4 font-bold text-blue-600">{t.tracking_code}</td>
-                                <td className="p-4">
-                                    <div className="font-medium text-gray-800">{t.tracking_date}</div>
-                                    <div className="text-xs text-gray-400">{t.tracking_time}</div>
-                                </td>
-                                <td className="p-4 font-medium text-gray-800">{t.child_names} {t.child_surnames} <br /><span className="text-xs text-gray-500 font-normal">RC: {t.civil_registry}</span></td>
-                                <td className="p-4 text-gray-600">{t.created_by_name}</td>
-                                <td className="p-4 text-center flex justify-center gap-2">
-                                    <button onClick={() => handleEdit(t.id)} className="text-blue-500 hover:text-blue-800 bg-blue-100 p-2 rounded-full transition-colors title='Editar Seguimiento'"><Edit className="w-4 h-4 mx-auto" /></button>
-                                    <button onClick={() => handlePreview(t.id)} className="text-purple-600 hover:text-purple-800 bg-purple-100 p-2 rounded-full transition-colors title='Ver Reporte (PDF)'"><Printer className="w-4 h-4 mx-auto" /></button>
-                                </td>
+            <div className="bg-white rounded-xl shadow-md overflow-hidden print:hidden border border-gray-200">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-gray-600">
+                        <thead className="bg-gray-100 border-b text-gray-800">
+                            <tr>
+                                <th className="p-4 font-bold">Código</th>
+                                <th className="p-4 font-bold">Registro de Fechas</th>
+                                <th className="p-4 font-bold">Niño/a Participante</th>
+                                <th className="p-4 font-bold">Creado por</th>
+                                <th className="p-4 text-center font-bold">Acciones</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {currentTrackings.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-gray-500 font-medium">No se encontraron seguimientos.</td></tr>}
+                            {currentTrackings.map(t => {
+                                const retired = isRetired(t.exit_date);
+                                return (
+                                    <tr key={t.id} className={`border-b transition-colors ${retired ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-blue-50'}`}>
+                                        <td className="p-4 font-bold text-blue-600">{t.tracking_code}</td>
+                                        <td className="p-4 space-y-1">
+                                            <div className="flex gap-5 items-center"><span className="text-xs font-bold text-gray-400 w-12">CREACIÓN:</span> <span className="font-medium text-gray-800">{t.tracking_date}</span></div>
+                                            <div className="flex gap-5 items-center"><span className="text-xs font-bold text-gray-400 w-12">INGRESO:</span> <span className="text-gray-700">{t.entry_date || '-'}</span></div>
+                                            <div className="flex gap-5 items-center"><span className="text-xs font-bold text-gray-400 w-12">RETIRO:</span> <span className={retired ? "text-red-700 font-bold" : "text-gray-500"}>{t.exit_date || '-'}</span></div>
+                                        </td>
+                                        <td className="p-4 font-medium text-gray-800">{t.child_names} {t.child_surnames} <br /><span className="text-xs text-gray-500 font-normal">RC: {t.civil_registry}</span></td>
+                                        <td className="p-4 text-gray-600">{t.created_by_name}</td>
+                                        <td className="p-4 text-center flex justify-center gap-2">
+                                            <button
+                                                onClick={() => handleEdit(t.id)}
+                                                className={`p-2 rounded-full transition-colors title='Editar Seguimiento' ${retired ? 'text-red-400 bg-red-100 hover:bg-red-200 cursor-not-allowed' : 'text-blue-500 bg-blue-100 hover:text-blue-800'}`}
+                                            >
+                                                <Edit className="w-4 h-4 mx-auto" />
+                                            </button>
+                                            <button onClick={() => handlePreview(t.id)} className="text-purple-600 hover:text-purple-800 bg-purple-100 p-2 rounded-full transition-colors title='Ver Reporte (PDF)'"><Printer className="w-4 h-4 mx-auto" /></button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* PAGINACIÓN */}
+                {filteredTrackings.length > 0 && (
+                    <div className="bg-gray-50 border-t p-4 flex items-center justify-between text-sm text-gray-600">
+                        <div>
+                            Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredTrackings.length)} de {filteredTrackings.length} registros
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"><ChevronsLeft className="w-5 h-5" /></button>
+                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"><ChevronLeft className="w-5 h-5" /></button>
+                            <span className="px-3 font-medium bg-white border rounded mx-1">Pág {currentPage} de {totalPages}</span>
+                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage === totalPages} className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"><ChevronRight className="w-5 h-5" /></button>
+                            <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="p-1 rounded hover:bg-gray-200 disabled:opacity-50"><ChevronsRight className="w-5 h-5" /></button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* =======================================================================
-                MODAL DE PREVISUALIZACIÓN Y REPORTE PDF (Aparece sobre toda la pantalla)
+                MODAL DE PREVISUALIZACIÓN Y REPORTE PDF 
                 ======================================================================= */}
             {showPreviewModal && previewData && (
                 <div>
@@ -280,23 +337,12 @@ const TrackingsView = () => {
                         {`
                         @media print {
                             @page { 
-                                size: legal; /* Tamaño Folio/Legal */
+                                size: legal; 
                                 margin: 15mm; 
                             }
-                            body, html { 
-                                overflow: visible !important; 
-                                height: auto !important; 
-                                background: white !important; 
-                            }
-                            #root { 
-                                overflow: visible !important; 
-                                height: auto !important; 
-                                display: block !important; 
-                            }
-                            * { 
-                                -webkit-print-color-adjust: exact !important; 
-                                print-color-adjust: exact !important; 
-                            }
+                            body, html { overflow: visible !important; height: auto !important; background: white !important; }
+                            #root { overflow: visible !important; height: auto !important; display: block !important; }
+                            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                         }
                         `}
                     </style>
@@ -333,7 +379,7 @@ const TrackingsView = () => {
                                     <p><strong>Impreso el:</strong> {new Date().toLocaleDateString()}</p>
                                 </div>
 
-                                {/* 1. DATOS DEL PARTICIPANTE COMPLETOS */}
+                                {/* DATOS DEL PARTICIPANTE COMPLETOS */}
                                 <div className="mb-6 print:break-inside-avoid">
                                     <h3 className="font-black text-gray-800 uppercase border-b border-gray-300 pb-1 mb-3">1. Datos del Participante</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4 p-4 border rounded-lg bg-blue-50">
@@ -371,7 +417,6 @@ const TrackingsView = () => {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {/* Pedagógico Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Pedagógico</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -384,8 +429,7 @@ const TrackingsView = () => {
                                                 </ul>
                                                 <div className="mt-2 text-xs bg-yellow-50 p-2 border border-yellow-200"><strong>Logros:</strong> {previewData.module2.achievements || 'Ninguno registrado'}</div>
                                             </div>
-                                            
-                                            {/* Novedades Completo */}
+
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Novedades</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -399,7 +443,6 @@ const TrackingsView = () => {
                                                 </ul>
                                             </div>
 
-                                            {/* Desarrollo Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Desarrollo</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -425,7 +468,7 @@ const TrackingsView = () => {
                                             <p><strong>Situaciones Riesgo:</strong> {yesNo(previewData.module3.risk_situations)}</p>
                                             <p><strong>Restablecimiento Derechos:</strong> {yesNo(previewData.module3.rights_restoration)}</p>
                                             <p><strong>Articulación Rutas:</strong> {yesNo(previewData.module3.routes_articulation)}</p>
-                                            
+
                                             <div className="col-span-3 mt-2">
                                                 <strong>Bitácora de Acciones de Formación a Familias:</strong>
                                                 {previewData.module3.family_logs && previewData.module3.family_logs.length > 0 ? (
@@ -463,7 +506,7 @@ const TrackingsView = () => {
                                             <p><strong>Meses Exclusiva:</strong> {previewData.module4.exclusive_lactation_months || 'N/A'}</p>
                                             <p><strong>Meses Total:</strong> {previewData.module4.total_lactation_months || 'N/A'}</p>
                                             <p><strong>Intro Alimentos (meses):</strong> {previewData.module4.food_intro_age || 'N/A'}</p>
-                                            
+
                                             <p className="col-span-2"><strong>Control Salud Oral:</strong> {yesNo(previewData.module4.oral_health_control)}</p>
                                             <p className="col-span-2"><strong>Valoración Médica:</strong> {yesNo(previewData.module4.medical_assessment)}</p>
                                         </div>
@@ -513,7 +556,6 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* Firmas */}
                                 <div className="mt-16 pt-8 border-t-2 border-gray-800 grid grid-cols-2 gap-8 text-center print:break-inside-avoid">
                                     <div>
                                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
@@ -555,8 +597,22 @@ const TrackingsView = () => {
                         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                             <form id="trackingForm" onSubmit={handleSubmit} className="space-y-6">
 
+                                {/* SELECTOR DE NIÑO CON BUSCADOR INTERNO */}
                                 <div className={`p-5 rounded-xl shadow-sm border-l-4 ${formData.id ? 'bg-gray-100 border-gray-400' : 'bg-white border-blue-600'}`}>
                                     <label className="font-bold text-gray-800 block mb-2 text-lg">1. Participante Seleccionado</label>
+
+                                    {!formData.id && (
+                                        <div className="mb-3">
+                                            <input
+                                                type="text"
+                                                placeholder="🔍 Escriba el nombre, apellido o RC para filtrar la lista..."
+                                                className="w-full p-2 border border-gray-300 rounded bg-blue-50 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                                                value={childSearchTerm}
+                                                onChange={e => setChildSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+
                                     <select
                                         required
                                         disabled={formData.id !== null}
@@ -564,8 +620,8 @@ const TrackingsView = () => {
                                         value={formData.child_id}
                                         onChange={e => setFormData({ ...formData, child_id: e.target.value })}
                                     >
-                                        <option value="">-- Busque y seleccione un niño/a de la lista --</option>
-                                        {children.map(c => <option key={c.id} value={c.id}>{c.civil_registry} - {c.names} {c.surnames} (Sede: {c.facility})</option>)}
+                                        <option value="">-- Seleccione un niño/a de la lista --</option>
+                                        {filteredModalChildren.map(c => <option key={c.id} value={c.id}>{c.civil_registry} - {c.names} {c.surnames} (Sede: {c.facility})</option>)}
                                     </select>
                                     {formData.id && <p className="text-xs text-red-500 mt-2 font-semibold">No se puede cambiar el niño/a de un seguimiento ya guardado.</p>}
                                 </div>
@@ -663,7 +719,7 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* MÓDULO 3: FAMILIA Y COMUNIDAD CON LOGS */}
+                                {/* MÓDULO 3: FAMILIA Y COMUNIDAD */}
                                 {user.modules.includes('MODULO_3') && (
                                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                         <div className="bg-amber-50 px-5 py-3 border-b border-amber-100 flex items-center gap-2">
@@ -673,16 +729,15 @@ const TrackingsView = () => {
                                             <SelectYesNo label="Situaciones de riesgo" mod="module3" field="risk_situations" />
                                             <SelectYesNo label="Restablecimiento derechos" mod="module3" field="rights_restoration" />
                                             <SelectYesNo label="Articulación rutas" mod="module3" field="routes_articulation" />
-                                            
-                                            {/* BITÁCORA DINÁMICA DE FAMILIA */}
+
                                             <div className="md:col-span-4 mt-2">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <label className="block text-sm font-bold text-gray-700">Bitácora: Acciones de formación a familias</label>
                                                     <button type="button" onClick={() => addLog('module3', 'family_logs')} className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors">
-                                                        <Plus className="w-4 h-4"/> Agregar Registro
+                                                        <Plus className="w-4 h-4" /> Agregar Registro
                                                     </button>
                                                 </div>
-                                                
+
                                                 <div className="space-y-3">
                                                     {formData.module3.family_logs.map((log, idx) => (
                                                         <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
@@ -694,7 +749,7 @@ const TrackingsView = () => {
                                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la acción</label>
                                                                 <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white" rows="2" placeholder="Escriba el detalle aquí..." value={log.description} onChange={e => handleLogChange('module3', 'family_logs', idx, 'description', e.target.value)} required></textarea>
                                                             </div>
-                                                            <button type="button" onClick={() => removeLog('module3', 'family_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5"/></button>
+                                                            <button type="button" onClick={() => removeLog('module3', 'family_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5" /></button>
                                                         </div>
                                                     ))}
                                                     {formData.module3.family_logs.length === 0 && (
@@ -816,21 +871,20 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* MÓDULO 6: COMUNIDADES DE APRENDIZAJE CON LOGS */}
+                                {/* MÓDULO 6: COMUNIDADES DE APRENDIZAJE */}
                                 {user.modules.includes('MODULO_6') && (
                                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                                         <div className="bg-purple-50 px-5 py-3 border-b border-purple-100 flex items-center gap-2">
                                             <CheckCircle className="w-5 h-5 text-purple-600" /><h3 className="font-bold text-lg text-purple-900">Módulo 6: Comunidades de Aprendizaje</h3>
                                         </div>
                                         <div className="p-5">
-                                            {/* BITÁCORA DINÁMICA DE TALENTO HUMANO */}
                                             <div className="flex justify-between items-center mb-3">
                                                 <label className="block text-sm font-bold text-gray-700">Bitácora: Cualificación al talento humano</label>
                                                 <button type="button" onClick={() => addLog('module6', 'talent_logs')} className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors">
-                                                    <Plus className="w-4 h-4"/> Agregar Registro
+                                                    <Plus className="w-4 h-4" /> Agregar Registro
                                                 </button>
                                             </div>
-                                            
+
                                             <div className="space-y-3">
                                                 {formData.module6.talent_logs.map((log, idx) => (
                                                     <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
@@ -842,7 +896,7 @@ const TrackingsView = () => {
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la cualificación</label>
                                                             <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" rows="2" placeholder="Escriba el detalle aquí..." value={log.description} onChange={e => handleLogChange('module6', 'talent_logs', idx, 'description', e.target.value)} required></textarea>
                                                         </div>
-                                                        <button type="button" onClick={() => removeLog('module6', 'talent_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5"/></button>
+                                                        <button type="button" onClick={() => removeLog('module6', 'talent_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5" /></button>
                                                     </div>
                                                 ))}
                                                 {formData.module6.talent_logs.length === 0 && (

@@ -9,10 +9,6 @@ class TrackingController {
         $this->db = Database::getConnection();
     }
 
-    /**
-     * Función auxiliar para convertir strings vacíos de React ("") 
-     * en NULL de SQL para columnas numéricas (INT, DECIMAL).
-     */
     private function num($val) {
         return ($val === "" || $val === null) ? null : $val;
     }
@@ -25,9 +21,12 @@ class TrackingController {
                         t.tracking_code, 
                         t.tracking_date, 
                         t.tracking_time, 
+                        t.child_id,
                         c.names AS child_names, 
                         c.surnames AS child_surnames, 
                         c.civil_registry,
+                        c.entry_date,
+                        c.exit_date,
                         u.name AS created_by_name
                     FROM trackings t
                     INNER JOIN children c ON t.child_id = c.id
@@ -44,7 +43,7 @@ class TrackingController {
         }
     }
 
-    // 2. Obtener un seguimiento específico con TODOS sus módulos y logs
+    // 2. Obtener un seguimiento específico
     public function show($id) {
         $stmt = $this->db->prepare("SELECT * FROM trackings WHERE id = :id");
         $stmt->execute([':id' => $id]);
@@ -52,7 +51,6 @@ class TrackingController {
 
         if (!$tracking) Response::json(404, false, "Seguimiento no encontrado");
 
-        // $stmtChild = $this->db->prepare("SELECT names, surnames, civil_registry FROM children WHERE id = :child_id");
         $stmtChild = $this->db->prepare("SELECT * FROM children WHERE id = :child_id");
         $stmtChild->execute([':child_id' => $tracking['child_id']]);
         $tracking['child'] = $stmtChild->fetch();
@@ -65,7 +63,6 @@ class TrackingController {
         $stmtM2->execute([':id' => $id]);
         $tracking['module2'] = $stmtM2->fetch() ?: null;
 
-        // MÓDULO 3 CON LOGS
         $stmtM3 = $this->db->prepare("SELECT * FROM tracking_module3 WHERE tracking_id = :id");
         $stmtM3->execute([':id' => $id]);
         $tracking['module3'] = $stmtM3->fetch() ?: null;
@@ -84,7 +81,6 @@ class TrackingController {
             $tracking['module4']['anthropometry'] = $stmtAntro->fetchAll();
         }
 
-        // MÓDULO 6 CON LOGS
         $stmtM6 = $this->db->prepare("SELECT * FROM tracking_module6 WHERE tracking_id = :id");
         $stmtM6->execute([':id' => $id]);
         $tracking['module6'] = $stmtM6->fetch() ?: null;
@@ -97,7 +93,7 @@ class TrackingController {
         Response::json(200, true, "Detalle de seguimiento", $tracking);
     }
 
-    // 3. Crear Seguimiento Maestro y los módulos enviados
+    // 3. Crear Seguimiento Maestro
     public function store($userData) {
         $data = json_decode(file_get_contents("php://input"));
 
@@ -106,10 +102,27 @@ class TrackingController {
         }
 
         try {
+            // VALIDACIÓN REQ 2 y 4: Retiro y Unicidad Activa
+            $stmtChild = $this->db->prepare("SELECT exit_date FROM children WHERE id = ?");
+            $stmtChild->execute([$data->child_id]);
+            $child = $stmtChild->fetch();
+            
+            $today = date('Y-m-d');
+
+            if ($child && $child['exit_date'] && $child['exit_date'] < $today) {
+                Response::json(400, false, "No se pueden agregar seguimientos de un niño que ya fue retirado.");
+            }
+
+            $stmtCheck = $this->db->prepare("SELECT id FROM trackings WHERE child_id = ?");
+            $stmtCheck->execute([$data->child_id]);
+            if ($stmtCheck->fetch() && empty($child['exit_date'])) {
+                Response::json(400, false, "El niño ya tiene un seguimiento activo. Debe modificar el existente, no crear uno nuevo.");
+            }
+
             $this->db->beginTransaction();
 
             $trackingCode = 'SEG-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -4));
-            $trackingDate = date('Y-m-d');
+            $trackingDate = $today;
             $trackingTime = date('H:i:s');
 
             $stmt = $this->db->prepare("INSERT INTO trackings (tracking_code, child_id, created_by, tracking_date, tracking_time) VALUES (?, ?, ?, ?, ?)");
@@ -221,6 +234,16 @@ class TrackingController {
         $modulesUserHas = $userData['modules'];
 
         try {
+            // VALIDACIÓN REQ 2: Retiro (Edición)
+            $stmtChild = $this->db->prepare("SELECT c.exit_date FROM trackings t JOIN children c ON t.child_id = c.id WHERE t.id = ?");
+            $stmtChild->execute([$id]);
+            $child = $stmtChild->fetch();
+            
+            $today = date('Y-m-d');
+            if ($child && $child['exit_date'] && $child['exit_date'] < $today) {
+                Response::json(400, false, "No se pueden modificar seguimientos de un niño que ya fue retirado.");
+            }
+
             $this->db->beginTransaction();
 
             $stmtCheck = $this->db->prepare("SELECT id FROM trackings WHERE id = :id");
@@ -256,7 +279,6 @@ class TrackingController {
                 $stmtM3 = $this->db->prepare($sqlM3);
                 $stmtM3->execute([$id, $m3->risk_situations, $m3->rights_restoration, $m3->routes_articulation]);
 
-                // Limpiar e insertar logs de Familia
                 $stmtDelFam = $this->db->prepare("DELETE FROM tracking_log_family WHERE tracking_id = ?");
                 $stmtDelFam->execute([$id]);
 
@@ -283,7 +305,6 @@ class TrackingController {
                     $this->num($m4->total_lactation_months), $this->num($m4->food_intro_age), $m4->oral_health_control, $m4->medical_assessment
                 ]);
 
-                // Limpiar e insertar Antropometría
                 $stmtDelAntro = $this->db->prepare("DELETE FROM tracking_anthropometry WHERE tracking_id = ?");
                 $stmtDelAntro->execute([$id]);
 
@@ -307,7 +328,6 @@ class TrackingController {
                 $stmtM6 = $this->db->prepare($sqlM6);
                 $stmtM6->execute([$id]);
 
-                // Limpiar e insertar logs de Talento Humano
                 $stmtDelTalent = $this->db->prepare("DELETE FROM tracking_log_talent WHERE tracking_id = ?");
                 $stmtDelTalent->execute([$id]);
 
@@ -330,7 +350,6 @@ class TrackingController {
         }
     }
 
-    // 5. Estadísticas y Reportes para el Dashboard
     public function statistics() {
         $stats = [];
         $stats['total_children'] = $this->db->query("SELECT COUNT(id) FROM children")->fetchColumn();

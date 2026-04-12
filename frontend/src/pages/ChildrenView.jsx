@@ -305,12 +305,12 @@ const ChildrenView = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block font-semibold mb-1">EPS <span className="text-red-500">*</span></label>
-                                            <input required type="text" name="eps" value={childForm.eps} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+                                            <label className="block font-semibold mb-1">EPS</label>
+                                            <input type="text" name="eps" value={childForm.eps} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="block font-semibold mb-1">Dirección de Residencia <span className="text-red-500">*</span></label>
-                                            <input required type="text" name="address" value={childForm.address} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+                                            <label className="block font-semibold mb-1">Dirección de Residencia</label>
+                                            <input type="text" name="address" value={childForm.address} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block font-semibold mb-1">Sede / Hogar Infantil <span className="text-red-500">*</span></label>
@@ -342,12 +342,12 @@ const ChildrenView = () => {
                                             <input required type="text" name="guardian_document" value={childForm.guardian_document} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="block font-semibold mb-1">Dirección <span className="text-red-500">*</span></label>
-                                            <input required type="text" name="guardian_address" value={childForm.guardian_address} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+                                            <label className="block font-semibold mb-1">Dirección</label>
+                                            <input type="text" name="guardian_address" value={childForm.guardian_address} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                                         </div>
                                         <div>
-                                            <label className="block font-semibold mb-1">Celular <span className="text-red-500">*</span></label>
-                                            <input required type="text" name="guardian_phone" value={childForm.guardian_phone} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
+                                            <label className="block font-semibold mb-1">Celular</label>
+                                            <input type="text" name="guardian_phone" value={childForm.guardian_phone} onChange={handleChildChange} className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" />
                                         </div>
                                     </div>
                                 </div>
