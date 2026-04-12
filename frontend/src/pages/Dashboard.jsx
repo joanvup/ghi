@@ -196,7 +196,7 @@ const Dashboard = () => {
                                 <h4 className="text-sm font-bold text-gray-800">Participantes con Discapacidad</h4>
                                 <p className="text-xs text-gray-500">Reportado en Seguimientos</p>
                             </div>
-                            <span className="text-2xl font-black text-fuchsia-600">{stats.demographics.disability || 0}</span>
+                            <span className="text-2xl font-black text-fuchsia-600">{stats.demographics?.disability || 0}</span>
                         </div>
 
                         <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
