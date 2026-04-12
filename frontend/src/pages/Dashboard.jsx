@@ -21,7 +21,7 @@ const Dashboard = () => {
         fetchStats();
     }, []);
 
-    if (loading) return <div className="flex justify-center items-center h-full text-blue-600 font-bold p-10"><Activity className="animate-spin w-8 h-8 mr-3"/> Cargando Panel Gerencial...</div>;
+    if (loading) return <div className="flex justify-center items-center h-full text-blue-600 font-bold p-10"><Activity className="animate-spin w-8 h-8 mr-3" /> Cargando Panel Gerencial...</div>;
     if (!stats) return <div className="text-center p-10 text-red-500 font-bold bg-red-50 rounded-xl">Error al cargar datos del servidor. Verifique la conexión a MySQL.</div>;
 
     // Colores corporativos para las gráficas
@@ -32,10 +32,10 @@ const Dashboard = () => {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-3 border-b-2 border-gray-200 pb-3">
-                <Activity className="w-8 h-8 text-blue-600"/>
+                <Activity className="w-8 h-8 text-blue-600" />
                 <h1 className="text-2xl font-black text-gray-800 tracking-tight">Panel de Control Gerencial</h1>
             </div>
-            
+
             {/* ==============================
                 1. KPI GLOBALES (Tarjetas)
                 ============================== */}
@@ -98,15 +98,15 @@ const Dashboard = () => {
                 2. GRÁFICAS DE MÓDULOS 
                 ============================== */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
+
                 {/* GRÁFICA MÓDULO 2: DESARROLLO PEDAGÓGICO */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col">
                     <div className="flex items-center justify-between mb-4 border-b pb-2">
-                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><BrainCircuit className="w-5 h-5 text-indigo-500"/> Escala Cualitativa de Desarrollo</h2>
+                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><BrainCircuit className="w-5 h-5 text-indigo-500" /> Escala Cualitativa de Desarrollo</h2>
                         <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">Módulo 2</span>
                     </div>
-                    
-                    {stats.development_status.length > 0 ? (
+
+                    {stats.development_status?.length > 0 ? (
                         <div className="flex-1 min-h-[250px] relative">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -127,11 +127,11 @@ const Dashboard = () => {
                 {/* GRÁFICA MÓDULO 4: SALUD Y RÉGIMEN */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col">
                     <div className="flex items-center justify-between mb-4 border-b pb-2">
-                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><HeartPulse className="w-5 h-5 text-emerald-500"/> Distribución Régimen de Salud</h2>
+                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><HeartPulse className="w-5 h-5 text-emerald-500" /> Distribución Régimen de Salud</h2>
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">Módulo 4</span>
                     </div>
 
-                    {stats.health_regime.length > 0 ? (
+                    {stats.health_regim?.lengthe > 0 ? (
                         <div className="flex-1 min-h-[250px] relative">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -141,10 +141,10 @@ const Dashboard = () => {
                                         ))}
                                     </Pie>
                                     <Tooltip formatter={(value) => [`${value} Niños`, 'Cantidad']} />
-                                    <Legend verticalAlign="bottom" height={36}/>
+                                    <Legend verticalAlign="bottom" height={36} />
                                 </PieChart>
                             </ResponsiveContainer>
-                            
+
                             {/* Subindicador de Vacunas Flotante */}
                             <div className="absolute top-0 right-0 bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-center">
                                 <p className="text-[10px] font-bold text-emerald-800 uppercase">Vacunas al Día</p>
@@ -162,11 +162,11 @@ const Dashboard = () => {
                 3. DEMOGRAFÍA Y SEDES
                 ============================== */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 {/* POBLACIÓN POR SEDE (Gráfica de Barras) */}
                 <div className="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-4 border-b pb-2">
-                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><Hospital className="w-5 h-5 text-sky-500"/> Población Registrada por Sede</h2>
+                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><Hospital className="w-5 h-5 text-sky-500" /> Población Registrada por Sede</h2>
                         <span className="text-xs font-bold text-gray-500 uppercase">Hogares Infantiles</span>
                     </div>
 
@@ -186,10 +186,10 @@ const Dashboard = () => {
                 {/* DEMOGRAFÍA MÓDULO 1 */}
                 <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col">
                     <div className="flex items-center justify-between mb-4 border-b pb-2">
-                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><GraduationCap className="w-5 h-5 text-fuchsia-500"/> Demografía y Apoyo</h2>
+                        <h2 className="text-base font-bold text-gray-800 flex items-center gap-2"><GraduationCap className="w-5 h-5 text-fuchsia-500" /> Demografía y Apoyo</h2>
                         <span className="text-xs font-bold text-fuchsia-600 bg-fuchsia-50 px-2 py-1 rounded">Módulo 1</span>
                     </div>
-                    
+
                     <div className="flex-1 flex flex-col justify-center space-y-4">
                         <div className="bg-fuchsia-50 p-4 rounded-xl border border-fuchsia-100 flex justify-between items-center">
                             <div>
