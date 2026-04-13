@@ -28,7 +28,7 @@ const MainLayout = ({ children }) => {
             {/* Sidebar */}
             <aside className={`fixed inset-y-0 left-0 bg-white w-64 shadow-xl z-30 transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="h-16 flex items-center justify-between px-6 bg-blue-600 text-white">
-                    <h1 className="text-xl font-bold truncate">Hogares APP</h1>
+                    <h1 className="text-xl font-bold truncate">GHI APP</h1>
                     <button onClick={() => setIsSidebarOpen(false)} className="md:hidden">
                         <X className="w-6 h-6" />
                     </button>
