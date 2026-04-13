@@ -1,5 +1,7 @@
+# Ignorar el archivo de configuración real del backend
+backend/config/config.php
+
 /frontend/node_modules/
 /frontend/dist/
 /backend/vendor/
-/backend/config/config.php
 .env
