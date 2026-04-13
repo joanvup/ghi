@@ -32,12 +32,3 @@ define('JWT_EXPIRATION', 3600 * 8); // 8 horas de sesión
 //define('MAIL_USER', 'no-reply@tudominio.com');
 //define('MAIL_PASS', 'tu_password_smtp');
 //define('MAIL_PORT', 465);
-
-// ==========================================
-// EJEMPLO DE CONFIGURACIÓN CON GMAIL (Local)
-// ==========================================
-define('MAIL_HOST', 'smtp.gmail.com'); 
-define('MAIL_USER', 'fotocopiadora@colegiobilingue.edu.co'); 
-// OJO: NO uses tu clave normal, debes generar una "Contraseña de aplicación" en tu cuenta de Google.
-define('MAIL_PASS', 'ypsn sore qkss bequ'); 
-define('MAIL_PORT', 465); // Puerto seguro para SMTP
