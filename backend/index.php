@@ -22,6 +22,7 @@ require_once 'controllers/UserController.php';
 require_once 'controllers/RoleController.php';
 require_once 'controllers/ChildController.php';
 require_once 'controllers/TrackingController.php';
+require_once 'controllers/ReportController.php'; 
 require_once 'utils/Response.php';
 
 $request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -41,6 +42,7 @@ $userController = new UserController();
 $roleController = new RoleController();
 $childController = new ChildController();
 $trackingController = new TrackingController();
+$reportController = new ReportController();
 
 switch ($resource) {
     // ---- RUTAS PÚBLICAS ----
@@ -131,5 +133,19 @@ switch ($resource) {
 
     default:
         Response::json(404, false, "Endpoint no encontrado: " . $resource);
+        break;
+
+    // ---- REPORTES GERENCIALES DETALLADOS ----
+    case 'reports':
+        // Solo usuarios con el rol configurado pueden ver esto
+        AuthMiddleware::verify('REPORTES'); 
+        
+        if ($method == 'GET') {
+            if ($id === 'nutritional') $reportController->getNutritionalRisk();
+            elseif ($id === 'pedagogical') $reportController->getPedagogicalRisk();
+            elseif ($id === 'family') $reportController->getFamilyAlerts();
+            elseif ($id === 'health') $reportController->getHealthAlerts();
+            else Response::json(400, false, "Reporte no válido");
+        }
         break;
 }

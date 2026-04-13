@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { Plus, Eye, CheckCircle, Activity, Users, BookOpen, HeartPulse, ShieldAlert, Scale, Search, Edit, Printer, X, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, HelpCircle } from 'lucide-react';
+import { Plus, Eye, CheckCircle, Activity, Users, BookOpen, HeartPulse, ShieldAlert, Scale, Search, Edit, Printer, X, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 const TrackingsView = () => {
     const { user } = useContext(AuthContext);
@@ -95,7 +95,8 @@ const TrackingsView = () => {
     // --- VALIDACIÓN DE ESTADO (RETIRO) ---
     const isRetired = (exitDateStr) => {
         if (!exitDateStr) return false;
-        const today = new Date().toLocaleDateString('en-CA'); 
+        // Obtenemos solo la fecha YYYY-MM-DD sin huso horario
+        const today = new Date().toLocaleDateString('en-CA'); // 'en-CA' saca YYYY-MM-DD
         return exitDateStr < today;
     };
 
@@ -131,6 +132,7 @@ const TrackingsView = () => {
     };
 
     const handleEdit = async (trackingId) => {
+        // Validación Front-end: ¿Está retirado?
         const trackingObj = trackings.find(t => t.id === trackingId);
         if (trackingObj && isRetired(trackingObj.exit_date)) {
             return alert("No se pueden modificar seguimientos de un niño que ya fue retirado.");
@@ -180,7 +182,7 @@ const TrackingsView = () => {
             };
 
             setFormData(cleanNulls(newForm));
-            setChildSearchTerm(''); 
+            setChildSearchTerm(''); // Limpiar busqueda
             setShowModal(true);
         } catch (error) {
             alert("Error al cargar los datos del seguimiento para edición.");
@@ -205,12 +207,13 @@ const TrackingsView = () => {
         e.preventDefault();
         if (!formData.child_id) return alert("Debe seleccionar un niño/a participante.");
 
+        // Validación Front-end adicional (Req 2 y 4)
         const selectedChild = children.find(c => c.id == formData.child_id);
         if (selectedChild && isRetired(selectedChild.exit_date)) {
             return alert("No se pueden agregar seguimientos a un niño que ya fue retirado.");
         }
 
-        if (!formData.id) { 
+        if (!formData.id) { // Si estamos creando
             const hasTracking = trackings.some(t => t.child_id == formData.child_id);
             if (hasTracking && (!selectedChild || !selectedChild.exit_date)) {
                 return alert("El niño ya tiene un seguimiento activo. Debe modificar el existente, no crear uno nuevo.");
@@ -233,27 +236,9 @@ const TrackingsView = () => {
         }
     };
 
-    // --- COMPONENTE AUXILIAR PARA LABEL CON TOOLTIP ---
-    const LabelWithTooltip = ({ label, tooltip }) => (
-        <div className="flex items-center gap-1 mb-1 group relative">
-            <label className="block text-xs font-semibold text-gray-600">{label}</label>
-            {tooltip && (
-                <div className="cursor-help text-gray-400 hover:text-blue-500 transition-colors">
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    {/* Tooltip Box */}
-                    <div className="absolute z-10 w-48 p-2 mt-1 text-xs text-white bg-gray-800 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bottom-full left-1/2 transform -translate-x-1/2 mb-1 pointer-events-none shadow-lg">
-                        {tooltip}
-                        {/* Flechita del tooltip */}
-                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-
-    const SelectYesNo = ({ label, tooltip, mod, field }) => (
+    const SelectYesNo = ({ label, mod, field }) => (
         <div>
-            <LabelWithTooltip label={label} tooltip={tooltip} />
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{label}</label>
             <select className="w-full border border-gray-300 p-2 rounded text-sm bg-white" value={formData[mod][field]} onChange={e => handleChange(mod, field, e.target.value)}>
                 <option value="0">No</option><option value="1">Sí</option>
             </select>
@@ -432,7 +417,6 @@ const TrackingsView = () => {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {/* Pedagógico Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Pedagógico</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -445,8 +429,7 @@ const TrackingsView = () => {
                                                 </ul>
                                                 <div className="mt-2 text-xs bg-yellow-50 p-2 border border-yellow-200"><strong>Logros:</strong> {previewData.module2.achievements || 'Ninguno registrado'}</div>
                                             </div>
-                                            
-                                            {/* Novedades Completo */}
+
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Novedades</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -460,7 +443,6 @@ const TrackingsView = () => {
                                                 </ul>
                                             </div>
 
-                                            {/* Desarrollo Completo */}
                                             <div>
                                                 <h4 className="font-bold text-gray-700 mb-2 bg-gray-100 p-1 text-center border rounded">Desarrollo</h4>
                                                 <ul className="text-xs space-y-1 list-disc pl-4">
@@ -486,7 +468,7 @@ const TrackingsView = () => {
                                             <p><strong>Situaciones Riesgo:</strong> {yesNo(previewData.module3.risk_situations)}</p>
                                             <p><strong>Restablecimiento Derechos:</strong> {yesNo(previewData.module3.rights_restoration)}</p>
                                             <p><strong>Articulación Rutas:</strong> {yesNo(previewData.module3.routes_articulation)}</p>
-                                            
+
                                             <div className="col-span-3 mt-2">
                                                 <strong>Bitácora de Acciones de Formación a Familias:</strong>
                                                 {previewData.module3.family_logs && previewData.module3.family_logs.length > 0 ? (
@@ -524,12 +506,11 @@ const TrackingsView = () => {
                                             <p><strong>Meses Exclusiva:</strong> {previewData.module4.exclusive_lactation_months || 'N/A'}</p>
                                             <p><strong>Meses Total:</strong> {previewData.module4.total_lactation_months || 'N/A'}</p>
                                             <p><strong>Intro Alimentos (meses):</strong> {previewData.module4.food_intro_age || 'N/A'}</p>
-                                            
+
                                             <p className="col-span-2"><strong>Control Salud Oral:</strong> {yesNo(previewData.module4.oral_health_control)}</p>
                                             <p className="col-span-2"><strong>Valoración Médica:</strong> {yesNo(previewData.module4.medical_assessment)}</p>
                                         </div>
 
-                                        {/* Antropometría Tabla Print */}
                                         {previewData.module4.anthropometry && previewData.module4.anthropometry.length > 0 && (
                                             <div className="border border-gray-300 rounded overflow-hidden">
                                                 <div className="bg-gray-100 font-bold text-center text-xs p-1 border-b border-gray-300">Registro de Antropometría</div>
@@ -575,7 +556,6 @@ const TrackingsView = () => {
                                     </div>
                                 )}
 
-                                {/* Firmas */}
                                 <div className="mt-16 pt-8 border-t-2 border-gray-800 grid grid-cols-2 gap-8 text-center print:break-inside-avoid">
                                     <div>
                                         <div className="border-b border-black w-3/4 mx-auto mb-2"></div>
@@ -654,23 +634,23 @@ const TrackingsView = () => {
                                         </div>
                                         <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div>
-                                                <LabelWithTooltip label="Etnia" tooltip="Especifique si pertenece a algún grupo étnico reconocido." />
-                                                <select className="w-full border border-gray-300 p-2 rounded text-sm bg-white" value={formData.module1.ethnicity} onChange={e => handleChange('module1', 'ethnicity', e.target.value)}>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Etnia</label>
+                                                <select className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module1.ethnicity} onChange={e => handleChange('module1', 'ethnicity', e.target.value)}>
                                                     <option value="Ninguna">Ninguna</option><option value="Indígena">Indígena</option><option value="Afrodescendiente">Afrodescendiente</option><option value="Raizal">Raizal</option><option value="ROM">ROM</option><option value="Otro">Otro</option>
                                                 </select>
                                             </div>
-                                            <SelectYesNo label="¿Tiene Discapacidad?" tooltip="Indique si el niño/a presenta alguna condición de discapacidad." mod="module1" field="has_disability" />
+                                            <SelectYesNo label="¿Tiene Discapacidad?" mod="module1" field="has_disability" />
                                             <div>
-                                                <LabelWithTooltip label="Tipo Discapacidad" tooltip="Si respondió SÍ arriba, seleccione el tipo de discapacidad principal." />
-                                                <select className="w-full border border-gray-300 p-2 rounded text-sm bg-white" value={formData.module1.disability_type} onChange={e => handleChange('module1', 'disability_type', e.target.value)}>
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Tipo Discapacidad</label>
+                                                <select className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module1.disability_type} onChange={e => handleChange('module1', 'disability_type', e.target.value)}>
                                                     <option value="Ninguna">Ninguna</option><option value="Física">Física</option><option value="Cognitiva">Cognitiva</option><option value="Sensorial">Sensorial</option><option value="Psicosocial">Psicosocial</option><option value="Múltiple">Múltiple</option><option value="Otra">Otra</option>
                                                 </select>
                                             </div>
-                                            <SelectYesNo label="¿Diagnóstico Médico?" tooltip="Indique si la discapacidad cuenta con un diagnóstico médico formal." mod="module1" field="medical_diagnosis" />
-                                            <SelectYesNo label="¿Requiere Apoyo Especial?" tooltip="Indique si el niño/a requiere de acompañamiento o ajustes razonables en su proceso." mod="module1" field="special_support" />
+                                            <SelectYesNo label="¿Diagnóstico Médico?" mod="module1" field="medical_diagnosis" />
+                                            <SelectYesNo label="¿Requiere Apoyo Especial?" mod="module1" field="special_support" />
                                             <div className="md:col-span-3">
-                                                <LabelWithTooltip label="Descripción del Apoyo Especial (Si aplica)" tooltip="Describa brevemente qué tipo de apoyo o ajuste razonable requiere el niño/a." />
-                                                <input type="text" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-indigo-400" value={formData.module1.special_support_desc} onChange={e => handleChange('module1', 'special_support_desc', e.target.value)} />
+                                                <label className="block text-xs font-semibold text-gray-600 mb-1">Descripción del Apoyo Especial (Si aplica)</label>
+                                                <input type="text" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module1.special_support_desc} onChange={e => handleChange('module1', 'special_support_desc', e.target.value)} />
                                             </div>
                                         </div>
                                     </div>
@@ -682,61 +662,57 @@ const TrackingsView = () => {
                                         <div className="bg-blue-50 px-5 py-3 border-b border-blue-100 flex items-center justify-between">
                                             <div className="flex items-center gap-2"><BookOpen className="w-5 h-5 text-blue-600" /><h3 className="font-bold text-lg text-blue-900">Módulo 2: Permanencia y Pedagogía</h3></div>
                                             <div className="flex items-center gap-2">
-                                                <LabelWithTooltip label="Escala de Valoración Final:" tooltip="Valoración cualitativa global del desarrollo del niño/a en este periodo." />
-                                                <select className="border-2 border-blue-400 p-1 rounded font-black text-sm outline-none bg-white text-blue-900 cursor-pointer" value={formData.module2.qualitative_val} onChange={e => handleChange('module2', 'qualitative_val', e.target.value)}>
+                                                <label className="text-sm font-bold text-blue-800">Escala de Valoración Final:</label>
+                                                <select className="border-2 border-blue-400 p-1 rounded font-black text-sm outline-none bg-white text-blue-900" value={formData.module2.qualitative_val} onChange={e => handleChange('module2', 'qualitative_val', e.target.value)}>
                                                     <option value="ESPERADO">ESPERADO</option><option value="EN RIESGO">EN RIESGO</option><option value="AVANZADO">AVANZADO</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-sm">
+                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                 <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Aspecto Pedagógico</h4>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <SelectYesNo label="Participación activa" tooltip="¿El niño participa activamente en las experiencias pedagógicas?" mod="module2" field="participation" />
-                                                    <SelectYesNo label="Motivación" tooltip="¿Muestra interés y motivación por aprender y descubrir?" mod="module2" field="motivation" />
-                                                    <SelectYesNo label="Estrategias acordes" tooltip="¿Las estrategias pedagógicas utilizadas responden a los intereses del niño?" mod="module2" field="appropriate_strategies" />
-                                                    <SelectYesNo label="Plan fortalecimiento" tooltip="¿Se ha implementado un plan de fortalecimiento para potenciar sus habilidades?" mod="module2" field="strengthening_plan" />
-                                                    <SelectYesNo label="Explora entorno" tooltip="¿El niño explora su entorno de manera autónoma y segura?" mod="module2" field="explores_environment" />
-                                                    <SelectYesNo label="Interactúa material" tooltip="¿Interactúa adecuadamente con el material didáctico y juguetes?" mod="module2" field="interacts_material" />
+                                                    <SelectYesNo label="Participación activa" mod="module2" field="participation" />
+                                                    <SelectYesNo label="Motivación" mod="module2" field="motivation" />
+                                                    <SelectYesNo label="Estrategias acordes" mod="module2" field="appropriate_strategies" />
+                                                    <SelectYesNo label="Plan fortalecimiento" mod="module2" field="strengthening_plan" />
+                                                    <SelectYesNo label="Explora entorno" mod="module2" field="explores_environment" />
+                                                    <SelectYesNo label="Interactúa material" mod="module2" field="interacts_material" />
                                                 </div>
                                                 <div>
-                                                    <LabelWithTooltip label="Logros (Texto)" tooltip="Describa los principales logros alcanzados por el niño en este periodo." />
-                                                    <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-400 bg-white" rows="2" value={formData.module2.achievements} onChange={e => handleChange('module2', 'achievements', e.target.value)}></textarea>
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1 mt-2">Logros (Texto)</label>
+                                                    <textarea className="w-full border border-gray-300 p-2 rounded text-sm" rows="2" value={formData.module2.achievements} onChange={e => handleChange('module2', 'achievements', e.target.value)}></textarea>
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-sm">
+                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                 <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Novedades</h4>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <SelectYesNo label="Salud/Comportamiento" tooltip="¿Se han presentado novedades relevantes en su salud o comportamiento?" mod="module2" field="health_behavior_news" />
-                                                    <SelectYesNo label="Inasistencias" tooltip="¿Ha presentado inasistencias injustificadas o recurrentes?" mod="module2" field="absences" />
-                                                    <SelectYesNo label="Incidentes" tooltip="¿Han ocurrido incidentes que afecten su bienestar en la sede?" mod="module2" field="incidents" />
-                                                    <SelectYesNo label="Rutas atención activas" tooltip="¿Se ha activado alguna ruta de atención interinstitucional?" mod="module2" field="attention_routes" />
-                                                    <SelectYesNo label="Información a familia" tooltip="¿Se ha informado a la familia sobre estas novedades?" mod="module2" field="family_info" />
+                                                    <SelectYesNo label="Salud/Comportamiento" mod="module2" field="health_behavior_news" />
+                                                    <SelectYesNo label="Inasistencias" mod="module2" field="absences" />
+                                                    <SelectYesNo label="Incidentes" mod="module2" field="incidents" />
+                                                    <SelectYesNo label="Rutas atención activas" mod="module2" field="attention_routes" />
+                                                    <SelectYesNo label="Información a familia" mod="module2" field="family_info" />
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-2 mt-2">
-                                                    <LabelWithTooltip label="Motivo inasistencias" tooltip="Si marcó SÍ en inasistencias, especifique el motivo principal." />
-                                                    <input type="text" placeholder="Escriba el motivo..." className="w-full border border-gray-300 p-2 rounded text-xs outline-none focus:ring-1 focus:ring-blue-400 bg-white" value={formData.module2.absences_reason} onChange={e => handleChange('module2', 'absences_reason', e.target.value)} />
-                                                    
-                                                    <LabelWithTooltip label="Cuáles rutas de atención" tooltip="Si marcó SÍ en Rutas, especifique cuáles se activaron." />
-                                                    <input type="text" placeholder="Ej: ICBF, Salud, etc." className="w-full border border-gray-300 p-2 rounded text-xs outline-none focus:ring-1 focus:ring-blue-400 bg-white" value={formData.module2.routes_desc} onChange={e => handleChange('module2', 'routes_desc', e.target.value)} />
+                                                    <input type="text" placeholder="Motivo inasistencias..." className="w-full border border-gray-300 p-2 rounded text-xs" value={formData.module2.absences_reason} onChange={e => handleChange('module2', 'absences_reason', e.target.value)} />
+                                                    <input type="text" placeholder="Cuáles rutas de atención..." className="w-full border border-gray-300 p-2 rounded text-xs" value={formData.module2.routes_desc} onChange={e => handleChange('module2', 'routes_desc', e.target.value)} />
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100 shadow-sm">
+                                            <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                 <h4 className="font-bold text-sm text-gray-700 border-b pb-1 mb-3">Seguimiento al Desarrollo</h4>
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <SelectYesNo label="Observador directo" tooltip="¿Se realiza observación directa y registro constante del desarrollo?" mod="module2" field="direct_observer" />
-                                                    <SelectYesNo label="Escala cualitativa" tooltip="¿Se aplica la Escala de Valoración Cualitativa del Desarrollo Infantil?" mod="module2" field="qualitative_scale" />
-                                                    <SelectYesNo label="Evalúa dimensiones" tooltip="¿Se evalúan todas las dimensiones del desarrollo (cognitiva, social, etc.)?" mod="module2" field="evaluates_dimensions" />
-                                                    <SelectYesNo label="Valoración trimestral" tooltip="¿Se cuenta con el registro de valoración del trimestre actual?" mod="module2" field="trimestral_val" />
-                                                    <SelectYesNo label="Avances evidentes" tooltip="¿Se evidencian avances significativos en su proceso?" mod="module2" field="advances" />
-                                                    <SelectYesNo label="Fortalezas/Dificultades" tooltip="¿Están identificadas claramente sus fortalezas y dificultades?" mod="module2" field="strengths_weaknesses" />
-                                                    <SelectYesNo label="Registra resultados" tooltip="¿Los resultados del seguimiento están debidamente registrados?" mod="module2" field="registers_results" />
+                                                    <SelectYesNo label="Observador directo" mod="module2" field="direct_observer" />
+                                                    <SelectYesNo label="Escala cualitativa" mod="module2" field="qualitative_scale" />
+                                                    <SelectYesNo label="Evalúa dimensiones" mod="module2" field="evaluates_dimensions" />
+                                                    <SelectYesNo label="Valoración trimestral" mod="module2" field="trimestral_val" />
+                                                    <SelectYesNo label="Avances evidentes" mod="module2" field="advances" />
+                                                    <SelectYesNo label="Fortalezas/Dificultades" mod="module2" field="strengths_weaknesses" />
+                                                    <SelectYesNo label="Registra resultados" mod="module2" field="registers_results" />
                                                 </div>
                                                 <div>
-                                                    <LabelWithTooltip label="Por qué NO (Escala cualitativa)" tooltip="Si marcó NO en Escala Cualitativa, justifique el motivo." />
-                                                    <input type="text" placeholder="Escriba la justificación..." className="w-full border border-gray-300 p-2 rounded text-xs mt-1 outline-none focus:ring-1 focus:ring-blue-400 bg-white" value={formData.module2.qualitative_no_reason} onChange={e => handleChange('module2', 'qualitative_no_reason', e.target.value)} />
+                                                    <input type="text" placeholder="Por qué NO (Escala cualitativa)..." className="w-full border border-gray-300 p-2 rounded text-xs mt-2" value={formData.module2.qualitative_no_reason} onChange={e => handleChange('module2', 'qualitative_no_reason', e.target.value)} />
                                                 </div>
                                             </div>
                                         </div>
@@ -750,28 +726,28 @@ const TrackingsView = () => {
                                             <ShieldAlert className="w-5 h-5 text-amber-600" /><h3 className="font-bold text-lg text-amber-900">Módulo 3: Familia y Comunidad</h3>
                                         </div>
                                         <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <SelectYesNo label="Situaciones de riesgo" tooltip="¿Se han identificado situaciones de riesgo o vulnerabilidad en el entorno familiar?" mod="module3" field="risk_situations" />
-                                            <SelectYesNo label="Restablecimiento derechos" tooltip="¿El niño/a se encuentra en Proceso de Restablecimiento de Derechos (PARD)?" mod="module3" field="rights_restoration" />
-                                            <SelectYesNo label="Articulación rutas" tooltip="¿Existe articulación con otras entidades para la atención integral a la familia?" mod="module3" field="routes_articulation" />
+                                            <SelectYesNo label="Situaciones de riesgo" mod="module3" field="risk_situations" />
+                                            <SelectYesNo label="Restablecimiento derechos" mod="module3" field="rights_restoration" />
+                                            <SelectYesNo label="Articulación rutas" mod="module3" field="routes_articulation" />
 
                                             <div className="md:col-span-4 mt-2">
                                                 <div className="flex justify-between items-center mb-3">
-                                                    <LabelWithTooltip label="Bitácora: Acciones de formación a familias" tooltip="Registre las fechas y descripciones de talleres, escuelas para padres o intervenciones realizadas con la familia." />
-                                                    <button type="button" onClick={() => addLog('module3', 'family_logs')} className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors shadow-sm">
+                                                    <label className="block text-sm font-bold text-gray-700">Bitácora: Acciones de formación a familias</label>
+                                                    <button type="button" onClick={() => addLog('module3', 'family_logs')} className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors">
                                                         <Plus className="w-4 h-4" /> Agregar Registro
                                                     </button>
                                                 </div>
 
                                                 <div className="space-y-3">
                                                     {formData.module3.family_logs.map((log, idx) => (
-                                                        <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm transition-all hover:border-amber-300">
+                                                        <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
                                                             <div>
                                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Fecha</label>
                                                                 <input type="date" className="border border-gray-300 p-2 rounded text-sm w-36 outline-none focus:ring-2 focus:ring-amber-500 bg-white" value={log.log_date} onChange={e => handleLogChange('module3', 'family_logs', idx, 'log_date', e.target.value)} required />
                                                             </div>
                                                             <div className="flex-1">
-                                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la acción formativa</label>
-                                                                <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white" rows="2" placeholder="Ej: Asistencia a taller de pautas de crianza..." value={log.description} onChange={e => handleLogChange('module3', 'family_logs', idx, 'description', e.target.value)} required></textarea>
+                                                                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la acción</label>
+                                                                <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white" rows="2" placeholder="Escriba el detalle aquí..." value={log.description} onChange={e => handleLogChange('module3', 'family_logs', idx, 'description', e.target.value)} required></textarea>
                                                             </div>
                                                             <button type="button" onClick={() => removeLog('module3', 'family_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5" /></button>
                                                         </div>
@@ -795,81 +771,70 @@ const TrackingsView = () => {
                                         </div>
                                         <div className="p-5 space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                                <SelectYesNo label="Afiliado a Salud" tooltip="¿El niño/a cuenta con afiliación vigente al sistema de salud?" mod="module4" field="health_affiliated" />
+                                                <SelectYesNo label="Afiliado a Salud" mod="module4" field="health_affiliated" />
                                                 <div>
-                                                    <LabelWithTooltip label="Régimen" tooltip="Seleccione el régimen de afiliación en salud." />
-                                                    <select className="w-full border border-gray-300 p-2 rounded text-sm bg-white outline-none focus:ring-1 focus:ring-emerald-400" value={formData.module4.regime} onChange={e => handleChange('module4', 'regime', e.target.value)}>
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Régimen</label>
+                                                    <select className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.regime} onChange={e => handleChange('module4', 'regime', e.target.value)}>
                                                         <option value="Ninguno">Ninguno</option><option value="Contributivo">Contributivo</option><option value="Subsidiado">Subsidiado</option><option value="Especial">Especial</option>
                                                     </select>
                                                 </div>
                                                 <div className="md:col-span-2">
-                                                    <LabelWithTooltip label="Nombre EPS" tooltip="Escriba el nombre completo de la Entidad Promotora de Salud." />
-                                                    <input type="text" placeholder="Ej: Nueva EPS" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-emerald-400 bg-white" value={formData.module4.eps_name} onChange={e => handleChange('module4', 'eps_name', e.target.value)} />
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre EPS</label>
+                                                    <input type="text" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.eps_name} onChange={e => handleChange('module4', 'eps_name', e.target.value)} />
                                                 </div>
-                                                <SelectYesNo label="Vacunas al día" tooltip="¿El esquema de vacunación está completo para su edad?" mod="module4" field="vaccines_updated" />
+                                                <SelectYesNo label="Vacunas al día" mod="module4" field="vaccines_updated" />
 
-                                                <SelectYesNo label="Carnet Crecimiento" tooltip="¿Cuenta con el carnet de Crecimiento y Desarrollo al día?" mod="module4" field="growth_chart" />
+                                                <SelectYesNo label="Carnet Crecimiento" mod="module4" field="growth_chart" />
                                                 <div>
-                                                    <LabelWithTooltip label="Controles (Últ. 6 meses)" tooltip="Cantidad de controles médicos a los que ha asistido en los últimos 6 meses." />
-                                                    <input type="number" min="0" max="4" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-emerald-400 bg-white" value={formData.module4.controls_6_months} onChange={e => handleChange('module4', 'controls_6_months', e.target.value)} />
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Controles (Últ. 6 meses)</label>
+                                                    <input type="number" min="0" max="4" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.controls_6_months} onChange={e => handleChange('module4', 'controls_6_months', e.target.value)} />
                                                 </div>
-                                                <SelectYesNo label="¿Prematurez?" tooltip="¿El niño/a nació de forma prematura?" mod="module4" field="premature" />
+                                                <SelectYesNo label="¿Prematurez?" mod="module4" field="premature" />
                                                 <div>
-                                                    <LabelWithTooltip label="Edad Gestacional (Sem)" tooltip="Si hubo prematurez, indique las semanas de gestación al nacer." />
-                                                    <input type="number" placeholder="Ej: 34" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-emerald-400 bg-white" value={formData.module4.gestational_age} onChange={e => handleChange('module4', 'gestational_age', e.target.value)} />
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Edad Gestacional (Sem)</label>
+                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.gestational_age} onChange={e => handleChange('module4', 'gestational_age', e.target.value)} />
                                                 </div>
-                                                <SelectYesNo label="¿Leche Materna?" tooltip="¿Recibió o recibe leche materna?" mod="module4" field="breast_milk" />
+                                                <SelectYesNo label="¿Leche Materna?" mod="module4" field="breast_milk" />
 
                                                 <div>
-                                                    <LabelWithTooltip label="Meses Lactancia Exclusiva" tooltip="Tiempo (en meses) durante el cual se alimentó SOLO con leche materna." />
-                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-emerald-400 bg-white" value={formData.module4.exclusive_lactation_months} onChange={e => handleChange('module4', 'exclusive_lactation_months', e.target.value)} />
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Meses Lactancia Exclusiva</label>
+                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.exclusive_lactation_months} onChange={e => handleChange('module4', 'exclusive_lactation_months', e.target.value)} />
                                                 </div>
                                                 <div>
-                                                    <LabelWithTooltip label="Meses Lactancia Total" tooltip="Tiempo total (en meses) de lactancia materna, incluyendo alimentación complementaria." />
-                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-emerald-400 bg-white" value={formData.module4.total_lactation_months} onChange={e => handleChange('module4', 'total_lactation_months', e.target.value)} />
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Meses Lactancia Total</label>
+                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.total_lactation_months} onChange={e => handleChange('module4', 'total_lactation_months', e.target.value)} />
                                                 </div>
                                                 <div>
-                                                    <LabelWithTooltip label="Edad Intro Alimentos (Meses)" tooltip="Edad en meses en la que inició la alimentación complementaria (sólidos)." />
-                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-1 focus:ring-emerald-400 bg-white" value={formData.module4.food_intro_age} onChange={e => handleChange('module4', 'food_intro_age', e.target.value)} />
+                                                    <label className="block text-xs font-semibold text-gray-600 mb-1">Edad Intro Alimentos (Meses)</label>
+                                                    <input type="number" className="w-full border border-gray-300 p-2 rounded text-sm" value={formData.module4.food_intro_age} onChange={e => handleChange('module4', 'food_intro_age', e.target.value)} />
                                                 </div>
-                                                <SelectYesNo label="Control Salud Oral" tooltip="¿Cuenta con registro de control odontológico reciente?" mod="module4" field="oral_health_control" />
-                                                <SelectYesNo label="Valoración Médica" tooltip="¿Cuenta con valoración por médico general/pediatra reciente?" mod="module4" field="medical_assessment" />
+                                                <SelectYesNo label="Control Salud Oral" mod="module4" field="oral_health_control" />
+                                                <SelectYesNo label="Valoración Médica" mod="module4" field="medical_assessment" />
                                             </div>
 
                                             {/* TABLA DE ANTROPOMETRÍA */}
                                             <div className="mt-6 border-t pt-4">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <h4 className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
-                                                        <Scale className="w-4 h-4" /> Registro de Antropometría (4 Tomas Obligatorias)
-                                                    </h4>
-                                                    <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                                                        ℹ️ Si una toma no se ha realizado, déjela en blanco.
-                                                    </span>
-                                                </div>
-                                                <div className="overflow-x-auto rounded-lg border border-emerald-100 shadow-sm">
+                                                <h4 className="flex items-center gap-2 font-bold text-emerald-800 text-sm mb-4">
+                                                    <Scale className="w-4 h-4" /> Registro de Antropometría (4 Tomas Obligatorias)
+                                                </h4>
+                                                <div className="overflow-x-auto rounded-lg border border-emerald-100">
                                                     <table className="w-full text-sm">
                                                         <thead className="bg-emerald-50 text-emerald-800">
                                                             <tr>
-                                                                <th className="p-3 text-left w-16">Toma</th>
-                                                                <th className="p-3 text-left">
-                                                                    <LabelWithTooltip label="Peso (KG)" tooltip="Ingrese el peso en Kilogramos usando punto para los decimales (Ej: 14.5)" />
-                                                                </th>
-                                                                <th className="p-3 text-left">
-                                                                    <LabelWithTooltip label="Talla (CMS)" tooltip="Ingrese la talla/estatura en Centímetros (Ej: 95.2)" />
-                                                                </th>
-                                                                <th className="p-3 text-left">
-                                                                    <LabelWithTooltip label="Clasificación Nutricional" tooltip="Seleccione el diagnóstico arrojado por la curva de crecimiento." />
-                                                                </th>
+                                                                <th className="p-3 text-left">Toma</th>
+                                                                <th className="p-3 text-left">Peso (KG)</th>
+                                                                <th className="p-3 text-left">Talla (CMS)</th>
+                                                                <th className="p-3 text-left">Clasificación Nutricional</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-emerald-50">
                                                             {formData.module4.anthropometry.map((row, idx) => (
-                                                                <tr key={idx} className="bg-white hover:bg-emerald-50/30 transition-colors">
+                                                                <tr key={idx} className="bg-white">
                                                                     <td className="p-3 font-bold text-gray-500">#{row.take_number}</td>
                                                                     <td className="p-2">
                                                                         <input
                                                                             type="number" step="0.01" placeholder="0.00"
-                                                                            className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                                                                            className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-1 focus:ring-emerald-400"
                                                                             value={row.weight_kg}
                                                                             onChange={e => handleAnthropometryChange(idx, 'weight_kg', e.target.value)}
                                                                         />
@@ -877,14 +842,14 @@ const TrackingsView = () => {
                                                                     <td className="p-2">
                                                                         <input
                                                                             type="number" step="0.01" placeholder="0.0"
-                                                                            className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+                                                                            className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-1 focus:ring-emerald-400"
                                                                             value={row.height_cm}
                                                                             onChange={e => handleAnthropometryChange(idx, 'height_cm', e.target.value)}
                                                                         />
                                                                     </td>
                                                                     <td className="p-2">
                                                                         <select
-                                                                            className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-2 focus:ring-emerald-400 bg-white cursor-pointer"
+                                                                            className="w-full p-2 border rounded border-gray-200 outline-none focus:ring-1 focus:ring-emerald-400"
                                                                             value={row.nutritional_classification}
                                                                             onChange={e => handleAnthropometryChange(idx, 'nutritional_classification', e.target.value)}
                                                                         >
@@ -914,22 +879,22 @@ const TrackingsView = () => {
                                         </div>
                                         <div className="p-5">
                                             <div className="flex justify-between items-center mb-3">
-                                                <LabelWithTooltip label="Bitácora: Cualificación al talento humano" tooltip="Registre capacitaciones, cursos, jornadas de formación o reuniones del talento humano." />
-                                                <button type="button" onClick={() => addLog('module6', 'talent_logs')} className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors shadow-sm">
+                                                <label className="block text-sm font-bold text-gray-700">Bitácora: Cualificación al talento humano</label>
+                                                <button type="button" onClick={() => addLog('module6', 'talent_logs')} className="text-xs bg-purple-100 text-purple-800 hover:bg-purple-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-colors">
                                                     <Plus className="w-4 h-4" /> Agregar Registro
                                                 </button>
                                             </div>
 
                                             <div className="space-y-3">
                                                 {formData.module6.talent_logs.map((log, idx) => (
-                                                    <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm transition-all hover:border-purple-300">
+                                                    <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
                                                         <div>
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Fecha</label>
                                                             <input type="date" className="border border-gray-300 p-2 rounded text-sm w-36 outline-none focus:ring-2 focus:ring-purple-500 bg-white" value={log.log_date} onChange={e => handleLogChange('module6', 'talent_logs', idx, 'log_date', e.target.value)} required />
                                                         </div>
                                                         <div className="flex-1">
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción de la cualificación</label>
-                                                            <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" rows="2" placeholder="Escriba el detalle de la jornada, curso o capacitación..." value={log.description} onChange={e => handleLogChange('module6', 'talent_logs', idx, 'description', e.target.value)} required></textarea>
+                                                            <textarea className="w-full border border-gray-300 p-2 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white" rows="2" placeholder="Escriba el detalle aquí..." value={log.description} onChange={e => handleLogChange('module6', 'talent_logs', idx, 'description', e.target.value)} required></textarea>
                                                         </div>
                                                         <button type="button" onClick={() => removeLog('module6', 'talent_logs', idx)} className="mt-5 p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors title='Eliminar registro'"><Trash2 className="w-5 h-5" /></button>
                                                     </div>

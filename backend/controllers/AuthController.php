@@ -84,13 +84,14 @@ class AuthController {
                 $mail->setFrom(MAIL_USER, 'Hogares Infantiles APP');
                 $mail->addAddress($data->email, $user['name']);
 
-                $resetLink = "http://localhost:5173/reset-password?token=" . $token; // URL de React (Desarrollo)
+                // Usamos la constante global APP_FRONTEND_URL
+                $resetLink = APP_FRONTEND_URL . "/reset-password?token=" . $token;
 
                 $mail->isHTML(true);
                 $mail->Subject = 'Recuperación de Contraseña';
                 $mail->Body    = "Hola {$user['name']},<br>Para recuperar tu contraseña haz clic en el siguiente enlace. Este enlace expira en 1 hora.<br><br><a href='{$resetLink}'>Restablecer Contraseña</a>";
 
-                // Descomentar en producción: $mail->send();
+                $mail->send();
             } catch (Exception $e) {
                 // Falla silenciosa o logs
             }

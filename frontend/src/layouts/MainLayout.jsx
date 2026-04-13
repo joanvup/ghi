@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
-import { LayoutDashboard, Users, Baby, FileText, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Baby, FileText, Settings, LogOut, Menu, X, Activity } from 'lucide-react';
 
 const MainLayout = ({ children }) => {
     const { user, logout } = useContext(AuthContext);
@@ -11,6 +11,7 @@ const MainLayout = ({ children }) => {
         { path: '/', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
         { path: '/ninos', label: 'Gestión de Niños', icon: <Baby className="w-5 h-5" />, module: 'GESTION_NINOS' },
         { path: '/seguimientos', label: 'Seguimientos', icon: <FileText className="w-5 h-5" />, module: 'MODULO_1' },
+        { path: '/reportes', label: 'Auditoría y Reportes', icon: <Activity className="w-5 h-5" />, module: 'REPORTES' },
         { path: '/admin', label: 'Administración', icon: <Settings className="w-5 h-5" />, module: 'ADMINISTRACION' },
     ];
 

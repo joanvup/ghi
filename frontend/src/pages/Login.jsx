@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import { Link } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 
@@ -44,8 +45,8 @@ const Login = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
                         <div className="relative">
                             <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                            <input 
-                                type="email" 
+                            <input
+                                type="email"
                                 required
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="admin@ejemplo.com"
@@ -59,8 +60,8 @@ const Login = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
                         <div className="relative">
                             <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                            <input 
-                                type="password" 
+                            <input
+                                type="password"
                                 required
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 placeholder="••••••••"
@@ -68,10 +69,15 @@ const Login = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
+                        <div className="flex justify-end mt-1">
+                            <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-800 font-bold transition-colors">
+                                ¿Olvidaste tu contraseña?
+                            </Link>
+                        </div>
                     </div>
 
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={loading}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200"
                     >
