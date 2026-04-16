@@ -5,7 +5,7 @@ import axios from 'axios';
 // const API_URL = 'http://localhost/api'; 
 // = 'http://ghi.test/backend';
 // const API_URL = 'http://ghi.test/ghi/backend';
-const API_URL = 'https://ghi.colegiobilingue.edu.co/api';
+const API_URL = 'https://grupotimon.org/api';
 
 const api = axios.create({
     baseURL: API_URL,

@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Hogares Infantiles APP',
-        short_name: 'HogaresApp',
+        name: 'Grupo Timon APP',
+        short_name: 'TimonApp',
         description: 'Sistema de Seguimiento para Hogares Infantiles',
         theme_color: '#3b82f6', // Color azul Tailwind (blue-500)
         background_color: '#ffffff',
