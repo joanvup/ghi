@@ -81,7 +81,7 @@ class AuthController {
                 $mail->Port       = MAIL_PORT;
                 $mail->CharSet    = 'UTF-8';
 
-                $mail->setFrom(MAIL_USER, 'Hogares Infantiles APP');
+                $mail->setFrom(MAIL_USER, 'Grupo Timon APP');
                 $mail->addAddress($data->email, $user['name']);
 
                 // Usamos la constante global APP_FRONTEND_URL
