@@ -4,7 +4,6 @@ import axios from 'axios';
 // Por ejemplo: 'http://localhost/tu-carpeta/backend'
 // const API_URL = 'http://localhost/api'; 
 // = 'http://ghi.test/backend';
-// const API_URL = 'http://ghi.test/ghi/backend';
 const API_URL = 'https://grupotimon.org/api';
 
 const api = axios.create({
