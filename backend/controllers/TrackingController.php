@@ -353,10 +353,18 @@ class TrackingController {
     public function statistics() {
         $stats = [];
         
-        // --- KPI GLOBALES ---
+        // --- KPI GLOBALES MEJORADOS ---
+        // 1. Obtenemos el Total absoluto, sin ninguna condición. 
         $stats['total_children'] = $this->db->query("SELECT COUNT(id) FROM children")->fetchColumn();
-        $stats['active_children'] = $this->db->query("SELECT COUNT(id) FROM children WHERE exit_date IS NULL OR exit_date > CURDATE()")->fetchColumn();
-        $stats['retired_children'] = $this->db->query("SELECT COUNT(id) FROM children WHERE exit_date <= CURDATE()")->fetchColumn();
+        
+        // 2. Contamos estrictamente a los Retirados (Aquellos cuya fecha de retiro sea igual o menor a hoy)
+        $stats['retired_children'] = $this->db->query("SELECT COUNT(id) FROM children WHERE exit_date IS NOT NULL AND exit_date <= CURDATE()")->fetchColumn();
+        
+        // 3. Calculamos los Activos directamente restando el total de los retirados.
+        // Esto elimina matemáticamente cualquier posibilidad de discrepancia o "pérdida" de niños.
+        $stats['active_children'] = $stats['total_children'] - $stats['retired_children'];
+
+        // Seguimientos totales
         $stats['total_trackings'] = $this->db->query("SELECT COUNT(id) FROM trackings")->fetchColumn();
 
         // --- DISTRIBUCIÓN POR SEDE (Gráfica de Barras) ---
